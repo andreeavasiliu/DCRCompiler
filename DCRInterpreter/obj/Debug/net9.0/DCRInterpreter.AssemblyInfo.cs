@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DCRInterpreter")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3d7f896ca41f0472329dab4911f6b39225e63108")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dcb9ba94ce660f39e1947edc33a416cbca186cc3")]
 [assembly: System.Reflection.AssemblyProductAttribute("DCRInterpreter")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DCRInterpreter")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

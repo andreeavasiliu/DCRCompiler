@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "lfJjLgX3iJY=",
+  "dgSpecHash": "AE6c0rNF3MI=",
   "success": true,
-  "projectFilePath": "/Users/andreeavasiliu/DCRInterpreter/DCRInterpreter/DCRInterpreter.csproj",
+  "projectFilePath": "/Users/andreeavasiliu/DCRCompiler/DCRInterpreter/DCRInterpreter.csproj",
   "expectedPackageFiles": [
     "/Users/andreeavasiliu/.nuget/packages/microsoft.codeanalysis.analyzers/3.3.4/microsoft.codeanalysis.analyzers.3.3.4.nupkg.sha512",
     "/Users/andreeavasiliu/.nuget/packages/microsoft.codeanalysis.common/4.12.0/microsoft.codeanalysis.common.4.12.0.nupkg.sha512",

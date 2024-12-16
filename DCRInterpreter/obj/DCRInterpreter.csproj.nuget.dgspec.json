@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/andreeavasiliu/DCRInterpreter/DCRInterpreter/DCRInterpreter.csproj": {}
+    "/Users/andreeavasiliu/DCRCompiler/DCRInterpreter/DCRInterpreter.csproj": {}
   },
   "projects": {
-    "/Users/andreeavasiliu/DCRInterpreter/DCRInterpreter/DCRInterpreter.csproj": {
+    "/Users/andreeavasiliu/DCRCompiler/DCRInterpreter/DCRInterpreter.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/andreeavasiliu/DCRInterpreter/DCRInterpreter/DCRInterpreter.csproj",
+        "projectUniqueName": "/Users/andreeavasiliu/DCRCompiler/DCRInterpreter/DCRInterpreter.csproj",
         "projectName": "DCRInterpreter",
-        "projectPath": "/Users/andreeavasiliu/DCRInterpreter/DCRInterpreter/DCRInterpreter.csproj",
+        "projectPath": "/Users/andreeavasiliu/DCRCompiler/DCRInterpreter/DCRInterpreter.csproj",
         "packagesPath": "/Users/andreeavasiliu/.nuget/packages/",
-        "outputPath": "/Users/andreeavasiliu/DCRInterpreter/DCRInterpreter/obj/",
+        "outputPath": "/Users/andreeavasiliu/DCRCompiler/DCRInterpreter/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/andreeavasiliu/.nuget/NuGet/NuGet.Config"
