@@ -1,11 +1,11 @@
 using System;
 using System.Reflection.Emit;
 
-public class JITCodeGenerator
+public class StateUpdateCompiler
 {
     private DCRGraph Graph;
 
-    public JITCodeGenerator(DCRGraph graph)
+    public StateUpdateCompiler(DCRGraph graph)
     {
         Graph = graph;
     }
