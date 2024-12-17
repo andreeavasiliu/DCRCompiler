@@ -70,7 +70,7 @@ class Program
         // Parse events from <event> elements
         foreach (var eventElement in doc.Descendants("event"))
         {
-            string id = eventElement.Attribute("id")?.Value;
+            string? id = eventElement.Attribute("id")?.Value;
             if (!string.IsNullOrEmpty(id))
             {
                 graph.Events[id] = new Event(id);
@@ -80,8 +80,8 @@ class Program
         // Parse responses from <response> elements
         foreach (var responseElement in doc.Descendants("response"))
         {
-            string sourceId = responseElement.Attribute("sourceId")?.Value;
-            string targetId = responseElement.Attribute("targetId")?.Value;
+            string? sourceId = responseElement.Attribute("sourceId")?.Value;
+            string? targetId = responseElement.Attribute("targetId")?.Value;
             if (!string.IsNullOrEmpty(sourceId) && !string.IsNullOrEmpty(targetId))
             {
                 graph.Responses.Add((sourceId, targetId));
@@ -91,8 +91,8 @@ class Program
         // Parse conditions from <condition> elements
         foreach (var conditionElement in doc.Descendants("condition"))
         {
-            string sourceId = conditionElement.Attribute("sourceId")?.Value;
-            string targetId = conditionElement.Attribute("targetId")?.Value;
+            string? sourceId = conditionElement.Attribute("sourceId")?.Value;
+            string? targetId = conditionElement.Attribute("targetId")?.Value;
             if (!string.IsNullOrEmpty(sourceId) && !string.IsNullOrEmpty(targetId))
             {
                 graph.Conditions.Add((sourceId, targetId));
@@ -102,8 +102,8 @@ class Program
         // Parse inclusions from <inclusion> elements
         foreach (var inclusionElement in doc.Descendants("inclusion"))
         {
-            string sourceId = inclusionElement.Attribute("sourceId")?.Value;
-            string targetId = inclusionElement.Attribute("targetId")?.Value;
+            string? sourceId = inclusionElement.Attribute("sourceId")?.Value;
+            string? targetId = inclusionElement.Attribute("targetId")?.Value;
             if (!string.IsNullOrEmpty(sourceId) && !string.IsNullOrEmpty(targetId))
             {
                 graph.Inclusions.Add((sourceId, targetId));
@@ -113,8 +113,8 @@ class Program
         // Parse exclusions from <exclusion> elements
         foreach (var exclusionElement in doc.Descendants("exclusion"))
         {
-            string sourceId = exclusionElement.Attribute("sourceId")?.Value;
-            string targetId = exclusionElement.Attribute("targetId")?.Value;
+            string? sourceId = exclusionElement.Attribute("sourceId")?.Value;
+            string? targetId = exclusionElement.Attribute("targetId")?.Value;
             if (!string.IsNullOrEmpty(sourceId) && !string.IsNullOrEmpty(targetId))
             {
                 graph.Exclusions.Add((sourceId, targetId));
@@ -124,8 +124,8 @@ class Program
         // Parse milestones from <milestone> elements
         foreach (var milestoneElement in doc.Descendants("milestone"))
         {
-            string sourceId = milestoneElement.Attribute("sourceId")?.Value;
-            string targetId = milestoneElement.Attribute("targetId")?.Value;
+            string? sourceId = milestoneElement.Attribute("sourceId")?.Value;
+            string? targetId = milestoneElement.Attribute("targetId")?.Value;
             if (!string.IsNullOrEmpty(sourceId) && !string.IsNullOrEmpty(targetId))
             {
                 graph.Milestones.Add((sourceId, targetId));
@@ -139,21 +139,21 @@ class Program
 
         foreach (var executedEvent in doc.Descendants("executed").Descendants("event"))
         {
-            string id = executedEvent.Attribute("id")?.Value;
+            string? id = executedEvent.Attribute("id")?.Value;
             if (!string.IsNullOrEmpty(id))
                 executedEvents.Add(id);
         }
 
         foreach (var includedEvent in doc.Descendants("included").Descendants("event"))
         {
-            string id = includedEvent.Attribute("id")?.Value;
+            string? id = includedEvent.Attribute("id")?.Value;
             if (!string.IsNullOrEmpty(id))
                 includedEvents.Add(id);
         }
 
         foreach (var pendingEvent in doc.Descendants("pendingResponses").Descendants("event"))
         {
-            string id = pendingEvent.Attribute("id")?.Value;
+            string? id = pendingEvent.Attribute("id")?.Value;
             if (!string.IsNullOrEmpty(id))
                 pendingEvents.Add(id);
         }

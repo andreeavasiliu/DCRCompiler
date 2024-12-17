@@ -16,6 +16,9 @@
         Conditions = new List<(string, string)>();
         Inclusions = new List<(string, string)>();
         Exclusions = new List<(string, string)>();
+        Milestones = new List<(string, string)>();
+
+        jitGenerator = new JITCodeGenerator(this);
     }
 
     public void Initialize()
