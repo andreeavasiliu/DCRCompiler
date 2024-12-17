@@ -6,6 +6,7 @@ public class Event
     public bool Executed { get; set; }
     public bool Included { get; set; }
     public bool Pending { get; set; }
+    public Action<DCRGraph> CompiledLogic { get; set; }
 
     public Event(string id)
     {

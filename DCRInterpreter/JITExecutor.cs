@@ -1,43 +1,49 @@
-using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.Scripting;
-using System.Threading.Tasks;
-using System.Text;
-
 public class JITExecutor
 {
-    public DCRGraph Graph;
-    public JITCodeGenerator JitGenerator;
+    private DCRGraph Graph;
 
     public JITExecutor(DCRGraph graph)
     {
         Graph = graph;
-        JitGenerator = new JITCodeGenerator(graph);
     }
 
-    public async Task ExecuteEventAsync(string eventId)
+    // Execute an event using its precompiled DynamicMethod
+    public void ExecuteEvent(string eventId)
     {
         if (!Graph.Events.ContainsKey(eventId))
             throw new ArgumentException($"Event {eventId} not found.");
-        // Generate the JIT code for this event
-        var jitCodeBuilder = new StringBuilder(JitGenerator.GenerateCodeForEvent(eventId));
-        jitCodeBuilder.AppendLine($"Graph.Events[\"{eventId}\"].Executed = true;");
-        string jitCode = jitCodeBuilder.ToString();
-        // Compile and execute the generated code
-        await ExecuteGeneratedCodeAsync(jitCode);
+
+        var e = Graph.Events[eventId];
+
+        if (!IsEventEnabled(eventId))
+            throw new InvalidOperationException($"Event {eventId} is not enabled.");
+
+        // Mark the event as executed
+        e.Executed = true;
+
+        // Invoke the precompiled logic for this event
+        e.CompiledLogic(Graph);
     }
 
-    private async Task ExecuteGeneratedCodeAsync(string jitCode)
+    // Check if an event is enabled
+    public bool IsEventEnabled(string eventId)
     {
-        // Create a Globals object with the graph
-        var globals = new Globals(Graph);
+        if (!Graph.Events.ContainsKey(eventId))
+            return false;
 
-        // Add necessary references and imports for the script
-        var scriptOptions = ScriptOptions.Default
-            .AddReferences(typeof(DCRGraph).Assembly)
-            .AddImports("System", "System.Collections.Generic");
+        var e = Graph.Events[eventId];
 
-        // Execute the generated code with Globals as context
-        await CSharpScript.RunAsync(jitCode, scriptOptions, globals: globals);
+        // An event must be included to be enabled
+        if (!e.Included)
+            return false;
+
+        // Check conditions: all conditions must be satisfied
+        foreach (var condition in Graph.Conditions)
+        {
+            if (condition.TargetId == eventId && Graph.Events[condition.SourceId].Included && !Graph.Events[condition.SourceId].Executed)
+                return false;
+        }
+
+        return true;
     }
-
 }

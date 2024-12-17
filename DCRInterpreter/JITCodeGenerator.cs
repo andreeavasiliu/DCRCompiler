@@ -1,50 +1,80 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Reflection.Emit;
 
 public class JITCodeGenerator
 {
-    public DCRGraph Graph;
+    private DCRGraph Graph;
 
     public JITCodeGenerator(DCRGraph graph)
     {
         Graph = graph;
     }
 
-    public string GenerateCodeForEvent(string eventId)
+    // Generate and compile a DynamicMethod for an event
+    public Action<DCRGraph> GenerateLogicForEvent(string eventId)
     {
-        StringBuilder codeBuilder = new StringBuilder();
+        var method = new DynamicMethod(
+            $"Execute_{eventId}",
+            typeof(void),                      // Return type
+            new[] { typeof(DCRGraph) },        // Parameter types
+            typeof(DCRGraph).Module            // Owner module
+        );
 
-        // Generate code for response rules
+        var il = method.GetILGenerator();
+
+        // Generate IL for response rules (mark target events as pending)
         foreach (var response in Graph.Responses)
         {
             if (response.SourceId == eventId)
             {
-                codeBuilder.AppendLine($"Graph.Events[\"{response.TargetId}\"].Pending = true;");
+                il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
+                il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+                il.Emit(OpCodes.Ldstr, response.TargetId); // Load target ID
+                il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Pending = true)
+                il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
             }
         }
 
-        // Generate code for inclusion rules
+        // Generate IL for inclusion rules (include target events)
         foreach (var inclusion in Graph.Inclusions)
         {
             if (inclusion.SourceId == eventId)
             {
-                codeBuilder.AppendLine($"Graph.Events[\"{inclusion.TargetId}\"].Included = true;");
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+                il.Emit(OpCodes.Ldstr, inclusion.TargetId);
+                il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Included = true)
+                il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Included").SetMethod);
             }
         }
 
-        // Generate code for exclusion rules
+        // Generate IL for exclusion rules (exclude target events)
         foreach (var exclusion in Graph.Exclusions)
         {
             if (exclusion.SourceId == eventId)
             {
-                codeBuilder.AppendLine($"Graph.Events[\"{exclusion.TargetId}\"].Included = false;");
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+                il.Emit(OpCodes.Ldstr, exclusion.TargetId);
+                il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Included = false)
+                il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Included").SetMethod);
             }
         }
 
         // Clear pending state for the executed event
-        codeBuilder.AppendLine($"Graph.Events[\"{eventId}\"].Pending = false;");
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+        il.Emit(OpCodes.Ldstr, eventId);
+        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+        il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Pending = false)
+        il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
 
-        return codeBuilder.ToString();
+        // Return from the method
+        il.Emit(OpCodes.Ret);
+
+        return (Action<DCRGraph>)method.CreateDelegate(typeof(Action<DCRGraph>));
     }
 }
