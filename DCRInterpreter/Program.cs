@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Xml.Linq;
-
+using DCR.Workflow;
+using Microsoft.Extensions.Logging;
+using static DCR.Core.Data.BuiltinModule;
 class Program
 {
     static void Main(string[] args)
@@ -17,41 +20,8 @@ class Program
 
         try
         {
-            DCRGraph graph = ParseDCRGraphFromXml(xmlFilePath);
-
-            // Initialize and precompile logic for events
-            graph.Initialize();
-
-            DCRInterpreter interpreter = new DCRInterpreter(graph);
-
-            foreach (var e in graph.Events.Values)
-            {
-                Console.WriteLine($"Event {e.Id}: Executed={e.Executed}, Included={e.Included}, Pending={e.Pending}");
-            }
-
-            foreach (var eventId in graph.Events.Keys)
-            {
-                if (interpreter.IsEventEnabled(eventId))
-                {
-                    Console.WriteLine($"Executing event: {eventId}");
-                    interpreter.ExecuteEvent(eventId);
-
-                    foreach (var e in graph.Events.Values)
-                    {
-                        Console.WriteLine($"Event {e.Id}: Executed={e.Executed}, Included={e.Included}, Pending={e.Pending}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Event {eventId} is not enabled.");
-                }
-            }
-
-            Console.WriteLine("\nFinal Event States:");
-            foreach (var e in graph.Events.Values)
-            {
-                Console.WriteLine($"Event {e.Id}: Executed={e.Executed}, Included={e.Included}, Pending={e.Pending}");
-            }
+            XDocument doc = XDocument.Load(xmlFilePath);
+            Becnh(doc);
         }
         catch (Exception ex)
         {
@@ -59,11 +29,97 @@ class Program
         }
     }
 
-    static DCRGraph ParseDCRGraphFromXml(string filePath)
+    static void Becnh(XDocument doc)
     {
-        // Load the XML document
-        XDocument doc = XDocument.Load(filePath);
+        var runtime = Runtime.Create(builder =>
+        {
+            builder.WithOptions(options =>
+                options.UpdateModelLog = true
+            );
+        });
+        var model = runtime.Parse(doc);
 
+        var loop = 500000;
+        DCRGraph graph = ParseDCRGraphFromXml(doc);
+        // Initialize and precompile logic for events
+        graph.Initialize();
+        DCRInterpreter interpreter = new DCRInterpreter(graph);
+
+        BenchRuntime(runtime, model, loop);
+        BenchInterp(interpreter, graph, loop);
+
+    }
+
+    static void BenchRuntime(Runtime runtime, Model model, int loop)
+    {
+        Stopwatch stopwatch = new Stopwatch();
+
+        int executedCount = 0;
+        // Start the stopwatch
+        stopwatch.Start();
+        for (int i = 0; i < loop; i++)
+        {
+            foreach (var item in model.AllActivities)
+            {
+                if (item.IsEnabled)
+                {
+                    executedCount++;
+                    model.Execute(item);
+                }
+
+                else
+                {
+                    Console.WriteLine($"Event {item.Id} is not enabled.");
+                }
+            }
+        }
+        // Stop the stopwatch
+        stopwatch.Stop();
+
+        // Get the elapsed time as a TimeSpan value
+        TimeSpan ts = stopwatch.Elapsed;
+
+        // Format and display the TimeSpan value
+        string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+        Console.WriteLine($"RunTime Workflow {executedCount} executions:" + elapsedTime);
+    }
+
+    static void BenchInterp(DCRInterpreter interpreter, DCRGraph graph, int loop)
+    {
+        Stopwatch stopwatch2 = new Stopwatch();
+        int executedCount = 0;
+        // Start the stopwatch
+        stopwatch2.Start();
+        for (int i = 0; i < loop; i++)
+        {
+            foreach (var eventId in graph.Events.Keys)
+            {
+                if (interpreter.IsEventEnabled(eventId))
+                {
+                    executedCount++;
+                    interpreter.ExecuteEvent(eventId);
+                }
+                else
+                {
+                    Console.WriteLine($"Event {eventId} is not enabled.");
+                }
+            }
+        }
+        // Stop the stopwatch
+        stopwatch2.Stop();
+
+        // Get the elapsed time as a TimeSpan value
+        TimeSpan ts = stopwatch2.Elapsed;
+
+        // Format and display the TimeSpan value
+        string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+        Console.WriteLine($"RunTime Interpreter {executedCount} executions:" + elapsedTime);
+    }
+
+    static DCRGraph ParseDCRGraphFromXml(XDocument doc)
+    {
         // Initialize a new DCRGraph instance
         DCRGraph graph = new DCRGraph();
 
@@ -162,7 +218,7 @@ class Program
         foreach (var id in graph.Events.Keys)
         {
             var e = graph.Events[id];
-            
+
             e.Executed = executedEvents.Contains(id);
             e.Included = includedEvents.Contains(id);
             e.Pending = pendingEvents.Contains(id);
