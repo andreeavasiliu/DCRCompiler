@@ -54,7 +54,7 @@ public class DCRInterpreter
             {
                 Event newEvent = new Event(id)
                 {
-                    Type = Enum.TryParse(eventElement.Attribute("type")?.Value, out EventType type) ? type : EventType.Task,
+                    Type = (eventElement.Attribute("type")?.Value) switch { "nesting" or "subprocess" or "form" or "template" => EventType.Form, _ =>  EventType.Task },
                     Data = eventElement.Element("data")?.Value,
                     Roles = eventElement.Element("roles")?.Elements("role").Select(r => r.Value).ToList() ?? new List<string>(),
                     ReadRoles = eventElement.Element("readRoles")?.Elements("role").Select(r => r.Value).ToList() ?? new List<string>()
