@@ -1,23 +1,27 @@
 ﻿public class DCRGraph
 {
-    public Dictionary<string, Event> Events { get; set; }
-    public List<(string SourceId, string TargetId)> Responses { get; set; }
-    public List<(string SourceId, string TargetId)> Conditions { get; set; }
-    public List<(string SourceId, string TargetId)> Inclusions { get; set; }
-    public List<(string SourceId, string TargetId)> Exclusions { get; set; }
-    public List<(string SourceId, string TargetId)> Milestones { get; set; }
+    public Guid Id { get; set; }
+    public string Title { get; set; }
 
-    private StateUpdateCompiler jitGenerator;
+    public List<Relationship> Relationships { get; set; } = new();
 
-    public DCRGraph()
+    public Dictionary<string, Event> Events { get; set; } = new();
+    
+    public HashSet<string> IncludedEvents { get; set; } = new();
+    public HashSet<string> PendingEvents { get; set; } = new();
+    public HashSet<string> ExecutedEvents { get; set; } = new();
+
+    private StateUpdateCompiler jitGenerator = null!;
+
+    public List<Relationship> Conditions => Relationships.Where(r => r.Type is RelationshipType.Condition).ToList();
+    public List<Relationship> Responses => Relationships.Where(r => r.Type is RelationshipType.Response).ToList();
+    public List<Relationship> Inclusions => Relationships.Where(r => r.Type is RelationshipType.Include).ToList();
+    public List<Relationship> Exclusions => Relationships.Where(r => r.Type is RelationshipType.Exclude).ToList();
+    public List<Relationship> Milestones => Relationships.Where(r => r.Type is RelationshipType.Milestone).ToList();
+
+    public DCRGraph(string title)
     {
-        Events = new Dictionary<string, Event>();
-        Responses = new List<(string, string)>();
-        Conditions = new List<(string, string)>();
-        Inclusions = new List<(string, string)>();
-        Exclusions = new List<(string, string)>();
-        Milestones = new List<(string, string)>();
-
+        this.Title = title;
     }
 
     public void Initialize()
@@ -50,4 +54,27 @@
 
         return true;
     }
+}
+
+public class Relationship
+{
+    public string SourceId { get; private set; }
+    public string TargetId { get; private set; }
+    public RelationshipType Type { get; private set; }
+
+    public Relationship( string source, string target, RelationshipType relationshipType)
+    {
+        SourceId = source;
+        TargetId = target;
+        Type = relationshipType;
+    }
+}
+
+public enum RelationshipType
+{
+    Condition,
+    Response,
+    Include,
+    Exclude,
+    Milestone
 }
