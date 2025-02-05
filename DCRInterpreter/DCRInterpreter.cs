@@ -56,8 +56,8 @@ public class DCRInterpreter
                 {
                     Type = (eventElement.Attribute("type")?.Value) switch { "nesting" or "subprocess" or "form" or "template" => EventType.Form, _ =>  EventType.Task },
                     Data = eventElement.Element("data")?.Value,
-                    Roles = eventElement.Element("roles")?.Elements("role").Select(r => r.Value).ToList() ?? new List<string>(),
-                    ReadRoles = eventElement.Element("readRoles")?.Elements("role").Select(r => r.Value).ToList() ?? new List<string>()
+                    Roles = eventElement.Element("custom")?.Element("roles")?.Elements("role").Select(r => r.Value).Where(role => !string.IsNullOrEmpty(role)).ToList() ?? new List<string>(),
+                    ReadRoles = eventElement.Element("custom")?.Element("readRoles")?.Elements("readRole").Select(r => r.Value).Where(role => !string.IsNullOrEmpty(role)).ToList() ?? new List<string>()
                 };
 
                 graph.Events[id] = newEvent;
