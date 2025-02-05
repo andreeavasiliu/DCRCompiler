@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Xml.Linq;
 
 public class DCRInterpreter
@@ -57,7 +58,8 @@ public class DCRInterpreter
                     Type = (eventElement.Attribute("type")?.Value) switch { "nesting" or "subprocess" or "form" or "template" => EventType.Form, _ =>  EventType.Task },
                     Data = eventElement.Element("data")?.Value,
                     Roles = eventElement.Element("custom")?.Element("roles")?.Elements("role").Select(r => r.Value).Where(role => !string.IsNullOrEmpty(role)).ToList() ?? new List<string>(),
-                    ReadRoles = eventElement.Element("custom")?.Element("readRoles")?.Elements("readRole").Select(r => r.Value).Where(role => !string.IsNullOrEmpty(role)).ToList() ?? new List<string>()
+                    ReadRoles = eventElement.Element("custom")?.Element("readRoles")?.Elements("readRole").Select(r => r.Value).Where(role => !string.IsNullOrEmpty(role)).ToList() ?? new List<string>(),
+                    Description = eventElement.Element("custom")?.Element("eventDescription")?.Value ?? ""
                 };
 
                 graph.Events[id] = newEvent;
@@ -79,6 +81,23 @@ public class DCRInterpreter
                 }
             }
         }
+        
+        void ParseLabels()
+        {
+            foreach(var labelElement in doc.Descendants("labelMappings"))
+            {
+                string? id = labelElement.Element("labelMapping")?.Attribute("eventId")?.Value;
+                string? label = labelElement.Element("labelMapping")?.Attribute("labelId")?.Value;
+
+                if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(label))
+                {
+                    if (graph.Events.ContainsKey(id))
+                    {
+                        graph.Events[id].Label = label;
+                    }
+                }
+            }
+        }
 
         // Parse all relationship types
         ParseRelationships("response", RelationshipType.Response);
@@ -86,6 +105,7 @@ public class DCRInterpreter
         ParseRelationships("inclusion", RelationshipType.Include);
         ParseRelationships("exclusion", RelationshipType.Exclude);
         ParseRelationships("milestone", RelationshipType.Milestone);
+        ParseLabels();
 
         // Parse markings for executed, included, and pending events
         var executedEvents = new HashSet<string>(

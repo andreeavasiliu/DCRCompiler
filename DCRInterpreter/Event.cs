@@ -6,6 +6,8 @@ public class Event
     public bool Executed { get; set; }
     public bool Included { get; set; }
     public bool Pending { get; set; }
+    public string Label { get; set; }
+    public string Description { get; set; }
     public EventType Type { get; set; } = EventType.Task;
     public object? Data { get; set; }
     public List<string> Roles { get; set; } = new();
