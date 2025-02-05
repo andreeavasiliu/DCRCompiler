@@ -6,11 +6,29 @@ using System.Xml.Linq;
 using DCR.Workflow;
 using Microsoft.Extensions.Logging;
 using static DCR.Core.Data.BuiltinModule;
+using Gremlin.Net;
+using Gremlin.Net.Driver;
 class Program
 {
+   
     static void Main(string[] args)
     {
+        string accountName = Environment.GetEnvironmentVariable("COSMOS_GREMLIN_ENDPOINT")!;
+        string accountKey = Environment.GetEnvironmentVariable("COSMOS_GREMLIN_KEY")!;    
+        var server = new GremlinServer(
+                hostname: $"{accountName}.gremlin.cosmos.azure.com",
+                port: 443,
+                username: "/dbs/cosmicworks/colls/products",
+                password: $"{accountKey}",
+                enableSsl: true
+            );
+
+        using var client = new GremlinClient(
+                    gremlinServer: server,
+                    messageSerializer: new Gremlin.Net.Structure.IO.GraphSON.GraphSON2MessageSerializer()
+                );
         string xmlFilePath = "DCR_interpreter.xml";
+
 
         if (!File.Exists(xmlFilePath))
         {
