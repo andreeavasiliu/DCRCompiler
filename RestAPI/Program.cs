@@ -21,31 +21,12 @@ builder.Services.AddSingleton<GremlinClient>(
                 password: $"{accountKey}",
                 enableSsl: true
             );
-
-            var connectionPoolSettings = new ConnectionPoolSettings
-            {
-                MaxInProcessPerConnection = 32,
-                PoolSize = 4,
-                ReconnectionAttempts = 4,
-                ReconnectionBaseDelay = TimeSpan.FromSeconds(1)
-            };
-
             return new GremlinClient(
                 gremlinServer: gremlinServer,
-                connectionPoolSettings: connectionPoolSettings,
                 messageSerializer: new Gremlin.Net.Structure.IO.GraphSON.GraphSON2MessageSerializer()
             );
         }
     );
-
-builder.Services.AddSingleton<GraphTraversalSource>(
-    (serviceProvider) =>
-    {
-        GremlinClient gremlinClient = serviceProvider.GetService<GremlinClient>();
-        var driverRemoteConnection = new DriverRemoteConnection(gremlinClient, "g");
-        return AnonymousTraversalSource.Traversal().WithRemote(driverRemoteConnection);
-    }
-);
 
 var app = builder.Build();
 

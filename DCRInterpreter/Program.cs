@@ -14,22 +14,20 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 class Program
 {
    
-    static async Task Main(string[] args)
+    static void Main(string[] args)
     {
         
         //string xmlFilePath = "DCR_interpreter.xml";
         string xmlFilePath = "the_ultimate_test.xml";
-
 
         if (!File.Exists(xmlFilePath))
         {
             Console.WriteLine($"Error: File '{xmlFilePath}' not found.");
             return;
         }
-        //Console.WriteLine(client.NrConnections.ToString());
         //DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(XDocument.Load(xmlFilePath));
-        //await CleanDatabaseAsync(client);
     }
+
     //static public async Task InsertGraphAsync(DCRGraph graph, GremlinClient _client)
     //{
     //    // Insert vertices for each event
@@ -88,21 +86,22 @@ class Program
     //}
 
 
-    static public async Task CleanDatabaseAsync(GremlinClient _client)
-    {
-        try
-        {
-            // Query to drop all vertices (and their connected edges)
-            string query = "g.V().drop()";
-            await _client.SubmitAsync<dynamic>(query);
+    //static public async Task CleanDatabaseAsync(GremlinClient _client)
+    //{
+    //    try
+    //    {
+    //        // Query to drop all vertices (and their connected edges)
+    //        string query = "g.V().drop()";
+    //        await _client.SubmitAsync<dynamic>(query);
             
-            Console.WriteLine("Database cleaned successfully.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error while cleaning the database: {ex.Message}");
-        }
-    }
+    //        Console.WriteLine("Database cleaned successfully.");
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Console.WriteLine($"Error while cleaning the database: {ex.Message}");
+    //    }
+    //}
+
     //static private async Task ExecuteQueryAsync(string query, GremlinClient _client)
     //{
     //    try
