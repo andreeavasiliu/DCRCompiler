@@ -42,6 +42,7 @@ public class DCRInterpreter
 
         return true;
     }
+
     public static DCRGraph ParseDCRGraphFromXml(XDocument doc)
     {
         // Initialize a new DCRGraph instance with a title (can be extracted from XML if available)
@@ -49,43 +50,69 @@ public class DCRInterpreter
         DCRGraph graph = new DCRGraph(title);
 
         // Parse events from <event> elements
-        foreach (var eventElement in doc.Element("dcrgraph")!.Element("specification")!.Element("resources")!.Element("events")!.Elements("event"))
+        void ParseEvent(XElement eventElement, Event? parentEvent = null)
         {
             string? id = eventElement.Attribute("id")?.Value;
             if (!string.IsNullOrEmpty(id))
             {
                 Event newEvent = new Event(id)
                 {
-                    Type = (eventElement.Attribute("type")?.Value) switch { "nesting" or "subprocess" or "form" or "template" => EventType.Form, _ =>  EventType.Task },
-                    Data = eventElement.Element("data")?.Value,
+                    Type = (eventElement.Attribute("type")?.Value) switch
+                    {
+                        "nesting" or "subprocess" or "form" or "template" => EventType.Form,
+                        _ => EventType.Task
+                    },
+                    Data = eventElement.Element("data")?.Value.EscapeGremlinString(),
                     Roles = eventElement.Element("custom")?.Element("roles")?.Elements("role").Select(r => r.Value).Where(role => !string.IsNullOrEmpty(role)).ToList() ?? new List<string>(),
                     ReadRoles = eventElement.Element("custom")?.Element("readRoles")?.Elements("readRole").Select(r => r.Value).Where(role => !string.IsNullOrEmpty(role)).ToList() ?? new List<string>(),
-                    Description = eventElement.Element("custom")?.Element("eventDescription")?.Value ?? ""
+                    Description = eventElement.Element("custom")?.Element("eventDescription")?.Value.EscapeGremlinString() ?? "",
+                    Parent = parentEvent
                 };
 
-                graph.Events.Add(id,newEvent);
+                graph.Events.Add(id, newEvent);
+
+                // Add this event as a child of its parent, if applicable
+                if (parentEvent != null)
+                {
+                    parentEvent.Children.Add(newEvent);
+                }
+
+                // Recursively parse child events
+                foreach (var childEvent in eventElement.Elements("event"))
+                {
+                    ParseEvent(childEvent, newEvent);
+                }
             }
+        }
+        foreach (var eventElement in doc.Element("dcrgraph")!.Element("specification")!.Element("resources")!.Element("events")!.Elements("event"))
+        {
+            ParseEvent(eventElement);
         }
 
         // Parse relationships from XML and add them to the graph
         void ParseRelationships(string elementName, RelationshipType type)
         {
-            foreach (var relationshipElement in doc.Descendants(elementName))
+            foreach (var relationshipElement in doc.Element("dcrgraph")!.Element("specification")!.Element("constraints")!.Element($"{elementName}s")?.Elements(elementName) ?? Enumerable.Empty<XElement>())
             {
                 string? sourceId = relationshipElement.Attribute("sourceId")?.Value;
                 string? targetId = relationshipElement.Attribute("targetId")?.Value;
+                string? guardId = relationshipElement.Attribute("expressionId")?.Value;
 
                 if (!string.IsNullOrEmpty(sourceId) && !string.IsNullOrEmpty(targetId))
                 {
-                    Relationship relationship = new Relationship(sourceId, targetId, type);
+                    Relationship relationship = new Relationship(sourceId, targetId, type)
+                    {
+                        GuardExpression = graph.Expressions.FirstOrDefault(e => e.Id == guardId),
+                        GuardExpressionId = guardId
+                    };
                     graph.Relationships.Add(relationship);
                 }
             }
         }
-        
+
         void ParseLabels()
         {
-            foreach(var labelElement in doc.Descendants("labelMappings"))
+            foreach (var labelElement in doc.Element("dcrgraph")!.Element("specification")!.Element("resources")!.Element($"labelMappings")!.Elements("labelMapping"))
             {
                 string? id = labelElement.Element("labelMapping")?.Attribute("eventId")?.Value;
                 string? label = labelElement.Element("labelMapping")?.Attribute("labelId")?.Value;
@@ -99,6 +126,22 @@ public class DCRInterpreter
                 }
             }
         }
+        void ParseExpressions()
+        {
+            foreach (var expression in doc.Element("dcrgraph")!.Element("specification")!.Element("resources")!.Element("expressions")!.Elements("expression").Where(x => x.FirstNode == null))
+            {
+                string? id = expression.Attribute("id")?.Value;
+                string? expressionString = expression.Attribute("value")?.Value;
+
+                if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(expressionString))
+                {
+                    DcrExpression newExpression = new DcrExpression { Id = id, Value = expressionString };
+                    graph.Expressions.Add(newExpression);
+                }
+            }
+        }
+
+        ParseExpressions();
 
         // Parse all relationship types
         ParseRelationships("response", RelationshipType.Response);

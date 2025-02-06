@@ -18,6 +18,18 @@
     public List<Relationship> Inclusions => Relationships.Where(r => r.Type is RelationshipType.Include).ToList();
     public List<Relationship> Exclusions => Relationships.Where(r => r.Type is RelationshipType.Exclude).ToList();
     public List<Relationship> Milestones => Relationships.Where(r => r.Type is RelationshipType.Milestone).ToList();
+    public List<DcrExpression> Expressions { get; set; } = new List<DcrExpression>();
+    public Dictionary<string, object?> Values {
+        get
+        {
+            var values = new Dictionary<string, object?>();
+            foreach (var e in Events)
+            {
+                values.Add(e.Key, e.Value.Data);
+            }
+            return values;
+        }
+    }
 
     public DCRGraph(string title)
     {
@@ -54,6 +66,51 @@
 
         return true;
     }
+    public bool CanExecuteEvent(string eventId)
+    {
+        var eventToExecute = Events.FirstOrDefault(e => e.Key == eventId).Value;
+        if (eventToExecute == null || !IncludedEvents.Contains(eventId))
+            return false;
+
+        // Check conditions
+        foreach (var condition in Relationships.Where(r => r.Type == RelationshipType.Condition && r.TargetId == eventId))
+        {
+            if (!ExecutedEvents.Contains(condition.SourceId))
+                return false;
+        }
+
+        // Check milestone constraints
+        foreach (var milestone in Relationships.Where(r => r.Type == RelationshipType.Milestone && r.TargetId == eventId))
+        {
+            if (!ExecutedEvents.Contains(milestone.SourceId))
+                return false;
+        }
+        foreach (var relation in Relationships.Where(r => r.TargetId == eventId && !string.IsNullOrEmpty(r.GuardExpressionId)))
+        {
+            var expression = Expressions.FirstOrDefault(e => e.Id == relation.GuardExpressionId);
+             if (expression != null)
+            {
+                var variables = Values.Where(v => expression.Value.Contains(v.Key)).ToDictionary(v => v.Key, v => v.Value);
+                if (!EvaluateExpression(expression.Value, variables))
+                    return false;
+            }
+        }
+
+
+        return true;
+    }
+
+    private bool EvaluateExpression(string expressionValue, Dictionary<string, object?>? variables)
+    {
+        var expression = new NCalc.Expression(expressionValue);
+
+        foreach (var variable in variables)
+        {
+            expression.Parameters[variable.Key] = variable.Value;
+        }
+
+        return (bool)expression.Evaluate();
+    }
 }
 
 public class Relationship
@@ -61,6 +118,8 @@ public class Relationship
     public string SourceId { get; private set; }
     public string TargetId { get; private set; }
     public RelationshipType Type { get; private set; }
+    public string? GuardExpressionId { get; set; }
+    public DcrExpression? GuardExpression { get; set; }
 
     public Relationship( string source, string target, RelationshipType relationshipType)
     {
@@ -69,6 +128,12 @@ public class Relationship
         Type = relationshipType;
     }
 }
+public class DcrExpression
+{
+    public string Id { get; set; } // Unique identifier for the expression
+    public string Value { get; set; } // The actual expression (e.g., "count(global) > 1")
+}
+
 
 public enum RelationshipType
 {
