@@ -1,6 +1,6 @@
 ﻿public class DCRGraph
 {
-    public Guid Id { get; set; }
+    public string Id { get; set; }
     public string Title { get; set; }
 
     public List<Relationship> Relationships { get; set; } = new();

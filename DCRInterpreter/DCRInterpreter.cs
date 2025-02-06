@@ -47,7 +47,9 @@ public class DCRInterpreter
     {
         // Initialize a new DCRGraph instance with a title (can be extracted from XML if available)
         string title = doc.Root?.Attribute("title")?.Value ?? "Untitled DCR Graph";
+        string guid = doc.Element("dcrgraph")!.Element("meta")!.Element("graph")!.Attribute("id")?.Value!;
         DCRGraph graph = new DCRGraph(title);
+        graph.Id = guid;
 
         // Parse events from <event> elements
         void ParseEvent(XElement eventElement, Event? parentEvent = null)
