@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Xml.Linq;
+using System.Xml.XPath;
 
 public class DCRInterpreter
 {
@@ -48,7 +49,7 @@ public class DCRInterpreter
         DCRGraph graph = new DCRGraph(title);
 
         // Parse events from <event> elements
-        foreach (var eventElement in doc.Descendants("event"))
+        foreach (var eventElement in doc.Element("dcrgraph")!.Element("specification")!.Element("resources")!.Element("events")!.Elements("event"))
         {
             string? id = eventElement.Attribute("id")?.Value;
             if (!string.IsNullOrEmpty(id))
@@ -62,7 +63,7 @@ public class DCRInterpreter
                     Description = eventElement.Element("custom")?.Element("eventDescription")?.Value ?? ""
                 };
 
-                graph.Events[id] = newEvent;
+                graph.Events.Add(id,newEvent);
             }
         }
 
