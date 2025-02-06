@@ -18,6 +18,7 @@ using static DCR.Core.Generator.API.Parameters;
 using DCR.IO.Xml;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
 
 namespace RestAPI.Controllers
 {
@@ -40,16 +41,17 @@ namespace RestAPI.Controllers
             {
                 // Query to get the DCRGraph vertex
                 var graphproperties = $"g.V().has('partitionKey', '{id}').hasLabel('DCRGraph')";
-                var metadata = await _gremlinClient.SubmitAsync<dynamic>(graphproperties);
+                var metadata = (await _gremlinClient.SubmitAsync<dynamic>(graphproperties)).First();
 
                 if (metadata is null)
                     return NotFound($"DCR Graph with ID {id} not found.");
                 var metadataJson = JToken.FromObject(metadata);
                 // Now, inspect or traverse metadataJson as needed:
-                string titleToken = metadataJson.First["properties"]["title"][0].Value<string>("value");
+                string titleToken = metadataJson["properties"]["title"][0]["value"];
+                string gid = (string)metadata["id"];
                 var dcrGraph = new DCRGraph(titleToken)
                 {
-                   // Id = (string)metadataV["id"],
+                   Id = gid
                 };
 
                 // Query to get all events connected to this DCRGraph
@@ -59,11 +61,58 @@ namespace RestAPI.Controllers
                 foreach (var eventVertex in eventsResult)
                 {
                     var eventId = (string)eventVertex["id"];
-                   // var eventData = JsonSerializer.Deserialize<Event>((string)eventVertex["properties"]["data"][0]["value"]);
+                    var eventJson = JToken.FromObject(eventVertex);
+                    var props = eventJson["properties"];
+                    bool executed = props["executed"][0]["value"];
+                    bool included = props["included"][0]["value"];
+                    bool pending = props["pending"][0]["value"];
 
-                  //  dcrGraph.Events[eventId] = eventData;
+                    string roles = props["roles"]?[0]?["value"]?? "";
+                    string[] items = roles.Split(',');
+                    List<string> rolesList = items.Select(item => item.Trim()).ToList();
+
+                    string readroles = props["readroles"]?[0]?["value"]?? "";
+                    string[] items2 = roles.Split(',');
+                    List<string> readrolesList = items2.Select(item => item.Trim()).ToList();
+
+                    string type = props["type"][0]["value"];
+                    var eventtype = (EventType)Enum.Parse(typeof(EventType), type, true);
+
+                    string? description = props["description"]?[0]?["value"]?? null;
+
+                    string? label = props["label"]?[0]?["value"]?? null;
+
+                    string? data = props["data"]?[0]?["value"]?? null;
+                    /*
+                        public string Id { get; set; }
+                        public bool Executed { get; set; }
+                        public bool Included { get; set; }
+                        public bool Pending { get; set; }
+                        public string Label { get; set; }
+                        public string Description { get; set; }
+                        public EventType Type { get; set; } = EventType.Task;
+                        public object? Data { get; set; }
+                        public List<string> Roles { get; set; } = new();
+                        public List<string> ReadRoles { get; set; } = new();
+                        public Action<DCRGraph> CompiledLogic { get; set; } = null!;
+                        public List<Event> Children { get; set; } = new();
+                        public Event? Parent { get; set; }
+                     */
+                    //var eventData = System.Text.Json.JsonSerializer.Deserialize<Event>((string)eventVertex["properties"]["data"][0]["value"]);
+
+                    dcrGraph.Events[eventId] = new Event(eventId) {
+                        Executed = executed,
+                        Included = included,
+                        Pending = pending,
+                        Roles = rolesList,
+                        ReadRoles = readrolesList,
+                        Type = eventtype,
+                        Description = description,
+                        Label = label,
+                        Data = data
+                    };
                 }
-
+                // works to this point
                 // Query to get all relationships between events
                 var relationshipsQuery = $"g.V().has('partitionKey', '{id}').hasLabel('Event').outE().as('e').inV().as('v').select('e', 'v')";
                 var relationshipsResult = await _gremlinClient.SubmitAsync<dynamic>(relationshipsQuery);
