@@ -161,7 +161,7 @@ public class StateUpdateCompiler
             il.Emit(OpCodes.Ldstr, tgt);          // Push "A"
             il.Emit(OpCodes.Callvirt, typeof(List<string>).GetMethod("Add")); // listLocal.Add("A")
 
-            // --- 0. Create an instance of StateUpdateCompiler
+            // --- 0. Create an instance of StateUpdateCompiler //maybe store in a local?
             ConstructorInfo stateUpdateCompilerCtor = typeof(StateUpdateCompiler).GetConstructor(new[] { typeof(DCRGraph) });
             il.Emit(OpCodes.Ldarg_0);  // Load DCRGraph instance (the first argument)
             il.Emit(OpCodes.Newobj, stateUpdateCompilerCtor); // Create new StateUpdateCompiler instance with DCRGraph
