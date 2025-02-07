@@ -113,7 +113,7 @@
         return (bool)expression.Evaluate();
     }
 
-    public List<string> ExecuteEvent(string eventId)
+    public List<string> ExecuteEvent(string eventId, string data)
     {
         if (!Events.ContainsKey(eventId))
             throw new ArgumentException($"Event {eventId} not found.");
@@ -124,7 +124,7 @@
             throw new InvalidOperationException($"Event {eventId} is not enabled.");
 
         // Execute precompiled logic using DynamicMethod
-        return e.CompiledLogic(this);
+        return e.CompiledLogic(this, data);
     }
 }
 

@@ -139,14 +139,52 @@ namespace RestAPI.Controllers
 
         }
 
+        public class EventRequest
+        {
+            public string EventId { get; set; }
+            public string Data { get; set; }
+        }
+
         [HttpPost("{graphid}")]
-        public async Task<IActionResult> ExecuteEvent([FromRoute] string graphid, [FromBody] string eventId)
+        public async Task<IActionResult> ExecuteEvent([FromRoute] string graphid, [FromBody] EventRequest request)
         {
             try
             {
+                string eventId = request.EventId;
+                string data = request.Data;
                 var dcrGraph = await RetrieveAndParseGraph(graphid); //Get graph from somewhere. Beyond the scope of the project
                 dcrGraph.Initialize();
-                var list = dcrGraph.ExecuteEvent(eventId);
+                var list = dcrGraph.ExecuteEvent(eventId, data);
+
+                foreach (var item in list)
+                {
+                    var evt = dcrGraph.Events[item];
+
+                    // Construct the update query by selecting the vertex and then setting its properties.
+                    var updateQuery = $"g.V().has('partitionKey', '{graphid}')" +
+                                      $".has('id', '{eventId.EscapeGremlinString()}')" +
+                                      $".property('type', '{evt.Type}')" +
+                                      $".property('executed', {evt.Executed.ToString().ToLower()})" +
+                                      $".property('included', {evt.Included.ToString().ToLower()})" +
+                                      $".property('pending', {evt.Pending.ToString().ToLower()})";
+
+                    if (evt.Data != null)
+                        updateQuery += $".property('data', '{evt.Data}')";
+
+                    if (evt.Roles.Count > 0)
+                        updateQuery += $".property('roles', '{string.Join(",", evt.Roles)}')";
+
+                    if (evt.ReadRoles.Count > 0)
+                        updateQuery += $".property('readRoles', '{string.Join(",", evt.ReadRoles)}')";
+
+                    if (!string.IsNullOrEmpty(evt.Description))
+                        updateQuery += $".property('description', '{evt.Description}')";
+
+                    if (!string.IsNullOrEmpty(evt.Label))
+                        updateQuery += $".property('label', '{evt.Label}')";
+
+                    var eventsResult = await _gremlinClient.SubmitAsync<dynamic>(updateQuery);
+                }
                 
                 // Example: Logging values
                 Console.WriteLine($"Graph ID: {graphid}, Event ID: {eventId}");

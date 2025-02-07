@@ -12,12 +12,12 @@ public class StateUpdateCompiler
     }
 
     // Generate and compile a DynamicMethod for an event
-    public Func<DCRGraph,List<string>> GenerateLogicForEvent(string eventId)
+    public Func<DCRGraph,string,List<string>> GenerateLogicForEvent(string eventId)
     {
         var method = new DynamicMethod(
             $"Execute_{eventId}",
             typeof(List<string>),                      // Return type
-            new[] { typeof(DCRGraph) },        // Parameter types
+            new[] { typeof(DCRGraph), typeof(string) },        // Parameter types
             typeof(DCRGraph).Module            // Owner module
         );
 
@@ -83,7 +83,13 @@ public class StateUpdateCompiler
         il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
         il.Emit(OpCodes.Ldc_I4_1); // Load constant false (Executed = true)
         il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
-        
+
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+        il.Emit(OpCodes.Ldstr, eventId);
+        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+        il.Emit(OpCodes.Ldarg_1); // Load constant false (Executed = true)
+        il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").SetMethod);
 
         foreach (var eve in Graph.Robots)
         {
@@ -196,6 +202,6 @@ public class StateUpdateCompiler
         il.Emit(OpCodes.Ldloc, listLocal);
         il.Emit(OpCodes.Ret);
 
-        return (Func<DCRGraph, List<string>>)method.CreateDelegate(typeof(Func<DCRGraph, List<string>>));
+        return (Func<DCRGraph,string, List<string>>)method.CreateDelegate(typeof(Func<DCRGraph, string, List<string>>));
     }
 }
