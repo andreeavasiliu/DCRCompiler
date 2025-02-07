@@ -12,12 +12,12 @@
     public HashSet<string> ExecutedEvents { get; set; } = new();
 
     private StateUpdateCompiler UpdateCompiler = null!;
-
-    public List<Relationship> Conditions => Relationships.Where(r => r.Type is RelationshipType.Condition).ToList();
-    public List<Relationship> Responses => Relationships.Where(r => r.Type is RelationshipType.Response).ToList();
-    public List<Relationship> Inclusions => Relationships.Where(r => r.Type is RelationshipType.Include).ToList();
-    public List<Relationship> Exclusions => Relationships.Where(r => r.Type is RelationshipType.Exclude).ToList();
-    public List<Relationship> Milestones => Relationships.Where(r => r.Type is RelationshipType.Milestone).ToList();
+    public IEnumerable<Event> Robots => Events.Where(e => e.Value.Included && e.Value.Pending && e.Value.IsRobot() && IsEventEnabled(e.Key)).Select(e => e.Value);
+    public IEnumerable<Relationship> Conditions => Relationships.Where(r => r.Type is RelationshipType.Condition);
+    public IEnumerable<Relationship> Responses => Relationships.Where(r => r.Type is RelationshipType.Response);
+    public IEnumerable<Relationship> Inclusions => Relationships.Where(r => r.Type is RelationshipType.Include);
+    public IEnumerable<Relationship> Exclusions => Relationships.Where(r => r.Type is RelationshipType.Exclude);
+    public IEnumerable<Relationship> Milestones => Relationships.Where(r => r.Type is RelationshipType.Milestone);
     public List<DcrExpression> Expressions { get; set; } = new List<DcrExpression>();
     public Dictionary<string, object?> Values {
         get
@@ -73,18 +73,19 @@
             return false;
 
         // Check conditions
-        foreach (var condition in Relationships.Where(r => r.Type == RelationshipType.Condition && r.TargetId == eventId))
+        foreach (var condition in Conditions.Where(r => r.TargetId == eventId))
         {
             if (!ExecutedEvents.Contains(condition.SourceId))
                 return false;
         }
 
         // Check milestone constraints
-        foreach (var milestone in Relationships.Where(r => r.Type == RelationshipType.Milestone && r.TargetId == eventId))
+        foreach (var milestone in Milestones.Where(r => r.TargetId == eventId))
         {
             if (!ExecutedEvents.Contains(milestone.SourceId))
                 return false;
         }
+
         foreach (var relation in Relationships.Where(r => r.TargetId == eventId && !string.IsNullOrEmpty(r.GuardExpressionId)))
         {
             var expression = Expressions.FirstOrDefault(e => e.Id == relation.GuardExpressionId);

@@ -22,6 +22,15 @@ public class Event
         Included = false;
         Pending = false;
     }
+
+    public bool IsRobot()
+    {
+        if (this.Roles.Any(role => role.ToLower().Equals("robot")))
+        {
+            return true;
+        }
+        return false;
+    }
 }
 
 public enum EventType
