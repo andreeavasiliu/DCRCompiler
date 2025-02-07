@@ -41,7 +41,7 @@ namespace RestAPI.Controllers
             try
             {
                 var dcrGraph = await RetrieveAndParseGraph(id);
-                return Ok(dcrGraph);
+                return Ok(dcrGraph.Title);
             }
             catch (Exception ex)
             {
