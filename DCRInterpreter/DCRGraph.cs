@@ -1,6 +1,6 @@
 ﻿public class DCRGraph
 {
-    public string Id { get; set; }
+    public string Id { get; set; } = "0";
     public string Title { get; set; }
 
     public List<Relationship> Relationships { get; set; } = new();
@@ -11,7 +11,7 @@
     public HashSet<string> PendingEvents { get; set; } = new();
     public HashSet<string> ExecutedEvents { get; set; } = new();
 
-    private StateUpdateCompiler jitGenerator = null!;
+    private StateUpdateCompiler UpdateCompiler = null!;
 
     public List<Relationship> Conditions => Relationships.Where(r => r.Type is RelationshipType.Condition).ToList();
     public List<Relationship> Responses => Relationships.Where(r => r.Type is RelationshipType.Response).ToList();
@@ -38,12 +38,12 @@
 
     public void Initialize()
     {
-        jitGenerator = new StateUpdateCompiler(this);
+        UpdateCompiler = new StateUpdateCompiler(this);
 
         // Precompile logic for each event
         foreach (var e in Events.Values)
         {
-            e.CompiledLogic = jitGenerator.GenerateLogicForEvent(e.Id);
+            e.CompiledLogic = UpdateCompiler.GenerateLogicForEvent(e.Id);
         }
     }
      public bool IsEventEnabled(string eventId)

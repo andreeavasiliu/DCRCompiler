@@ -83,23 +83,7 @@ namespace RestAPI.Controllers
                     string? label = props["label"]?[0]?["value"] ?? null;
 
                     string? data = props["data"]?[0]?["value"] ?? null;
-                    /*
-                        public string Id { get; set; }
-                        public bool Executed { get; set; }
-                        public bool Included { get; set; }
-                        public bool Pending { get; set; }
-                        public string Label { get; set; }
-                        public string Description { get; set; }
-                        public EventType Type { get; set; } = EventType.Task;
-                        public object? Data { get; set; }
-                        public List<string> Roles { get; set; } = new();
-                        public List<string> ReadRoles { get; set; } = new();
-                        public Action<DCRGraph> CompiledLogic { get; set; } = null!;
-                        public List<Event> Children { get; set; } = new();
-                        public Event? Parent { get; set; }
-                     */
-                    //var eventData = System.Text.Json.JsonSerializer.Deserialize<Event>((string)eventVertex["properties"]["data"][0]["value"]);
-
+                    
                     dcrGraph.Events[eventId] = new Event(eventId)
                     {
                         Executed = executed,
@@ -113,7 +97,7 @@ namespace RestAPI.Controllers
                         Data = data
                     };
                 }
-                // works to this point
+
                 // Query to get all relationships between events
                 var relationshipsQuery = $"g.V().has('partitionKey', '{id}').hasLabel('Event').outE().as('e').inV().as('v').select('e', 'v')";
                 var relationshipsResult = await _gremlinClient.SubmitAsync<dynamic>(relationshipsQuery);
@@ -146,6 +130,22 @@ namespace RestAPI.Controllers
                     }
                 }
 
+                /* //kinda missing, but they should be generated, no?
+                         var executedEvents = new HashSet<string>(
+                    doc.Descendants("executed").Descendants("event")
+                       .Select(e => e.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id))!);
+
+                var includedEvents = new HashSet<string>(
+                    doc.Descendants("included").Descendants("event")
+                       .Select(e => e.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id))!);
+
+                var pendingEvents = new HashSet<string>(
+                    doc.Descendants("pendingResponses").Descendants("event")
+                       .Select(e => e.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id))!);
+                 */
+
+                //DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(XDocument.Load("the_ultimate_test.xml"));
+                //bool ok= graph.Equals(dcrGraph); test, but not the same object so fails
                 return Ok(dcrGraph);
             }
             catch (Exception ex)
@@ -244,18 +244,5 @@ namespace RestAPI.Controllers
 
         }
 
-        public async Task ExecuteQueryAsync(string query, GremlinClient _client)
-        {
-            try
-            {
-                await _client.SubmitAsync<dynamic>(query);
-            }
-            catch (ResponseException e)
-            {
-                Console.WriteLine($"Error executing query: {query}");
-                Console.WriteLine($"Response status code: {e.StatusAttributes["x-ms-status-code"]}");
-                Console.WriteLine($"Response error message: {e.Message}");
-            }
-        }
     }
 }
