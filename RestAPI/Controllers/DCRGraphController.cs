@@ -51,7 +51,7 @@ namespace RestAPI.Controllers
                 string gid = (string)metadata["id"];
                 var dcrGraph = new DCRGraph(titleToken)
                 {
-                   Id = gid
+                    Id = gid
                 };
 
                 // Query to get all events connected to this DCRGraph
@@ -67,22 +67,22 @@ namespace RestAPI.Controllers
                     bool included = props["included"][0]["value"];
                     bool pending = props["pending"][0]["value"];
 
-                    string roles = props["roles"]?[0]?["value"]?? "";
+                    string roles = props["roles"]?[0]?["value"] ?? "";
                     string[] items = roles.Split(',');
                     List<string> rolesList = items.Select(item => item.Trim()).ToList();
 
-                    string readroles = props["readroles"]?[0]?["value"]?? "";
+                    string readroles = props["readroles"]?[0]?["value"] ?? "";
                     string[] items2 = roles.Split(',');
                     List<string> readrolesList = items2.Select(item => item.Trim()).ToList();
 
                     string type = props["type"][0]["value"];
                     var eventtype = (EventType)Enum.Parse(typeof(EventType), type, true);
 
-                    string? description = props["description"]?[0]?["value"]?? null;
+                    string? description = props["description"]?[0]?["value"] ?? null;
 
-                    string? label = props["label"]?[0]?["value"]?? null;
+                    string? label = props["label"]?[0]?["value"] ?? null;
 
-                    string? data = props["data"]?[0]?["value"]?? null;
+                    string? data = props["data"]?[0]?["value"] ?? null;
                     /*
                         public string Id { get; set; }
                         public bool Executed { get; set; }
@@ -100,7 +100,8 @@ namespace RestAPI.Controllers
                      */
                     //var eventData = System.Text.Json.JsonSerializer.Deserialize<Event>((string)eventVertex["properties"]["data"][0]["value"]);
 
-                    dcrGraph.Events[eventId] = new Event(eventId) {
+                    dcrGraph.Events[eventId] = new Event(eventId)
+                    {
                         Executed = executed,
                         Included = included,
                         Pending = pending,
@@ -122,13 +123,27 @@ namespace RestAPI.Controllers
                     var edge = result["e"];
                     var targetEventVertex = result["v"];
 
-                    var relationship = new Relationship(
-                        source: (string)edge["outV"], // Source event ID
-                        target: (string)targetEventVertex["id"], // Target event ID
-                        relationshipType: Enum.Parse<RelationshipType>((string)edge["label"], true) // Relationship type (Condition, Response, etc.)
-                    );
+                    var edgeType = (string)edge["label"];           // Relationship type (Condition, Response, etc.)
+                    var sourceid = (string)edge["outV"];            // Source event ID
+                    var targetid = (string)targetEventVertex["id"]; // Target event ID
 
-                    dcrGraph.Relationships.Add(relationship);
+
+                    if (edgeType == "parentOf")
+                    {
+                        dcrGraph.Events[targetid].Parent = dcrGraph.Events[sourceid];
+                        dcrGraph.Events[sourceid].Children.Add(dcrGraph.Events[targetid]);
+                    }
+                    else
+                    {
+
+                        var relationship = new Relationship(
+                        source: sourceid,
+                        target: targetid,
+                        relationshipType: Enum.Parse<RelationshipType>(edgeType, true)
+                        );
+
+                        dcrGraph.Relationships.Add(relationship);
+                    }
                 }
 
                 return Ok(dcrGraph);
