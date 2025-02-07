@@ -144,7 +144,7 @@ namespace RestAPI.Controllers
         {
             try
             {
-                var dcrGraph = await RetrieveAndParseGraph(graphid);
+                var dcrGraph = await RetrieveAndParseGraph(graphid); //Get graph from somewhere. Beyond the scope of the project
                 dcrGraph.Initialize();
                 var list = dcrGraph.ExecuteEvent(eventId);
                 
