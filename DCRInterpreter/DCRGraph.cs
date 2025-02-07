@@ -112,6 +112,20 @@
 
         return (bool)expression.Evaluate();
     }
+
+    public List<string> ExecuteEvent(string eventId)
+    {
+        if (!Events.ContainsKey(eventId))
+            throw new ArgumentException($"Event {eventId} not found.");
+
+        var e = Events[eventId];
+
+        if (!IsEventEnabled(eventId))
+            throw new InvalidOperationException($"Event {eventId} is not enabled.");
+
+        // Execute precompiled logic using DynamicMethod
+        return e.CompiledLogic(this);
+    }
 }
 
 public class Relationship

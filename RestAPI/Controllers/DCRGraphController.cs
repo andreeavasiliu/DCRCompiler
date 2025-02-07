@@ -19,6 +19,7 @@ using DCR.IO.Xml;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using static Parser.token;
 
 namespace RestAPI.Controllers
 {
@@ -39,113 +40,7 @@ namespace RestAPI.Controllers
         {
             try
             {
-                // Query to get the DCRGraph vertex
-                var graphproperties = $"g.V().has('partitionKey', '{id}').hasLabel('DCRGraph')";
-                var metadata = (await _gremlinClient.SubmitAsync<dynamic>(graphproperties)).First();
-
-                if (metadata is null)
-                    return NotFound($"DCR Graph with ID {id} not found.");
-                var metadataJson = JToken.FromObject(metadata);
-                // Now, inspect or traverse metadataJson as needed:
-                string titleToken = metadataJson["properties"]["title"][0]["value"];
-                string gid = (string)metadata["id"];
-                var dcrGraph = new DCRGraph(titleToken)
-                {
-                    Id = gid
-                };
-
-                // Query to get all events connected to this DCRGraph
-                var eventsQuery = $"g.V().has('partitionKey', '{id}').hasLabel('Event')";
-                var eventsResult = await _gremlinClient.SubmitAsync<dynamic>(eventsQuery);
-
-                foreach (var eventVertex in eventsResult)
-                {
-                    var eventId = (string)eventVertex["id"];
-                    var eventJson = JToken.FromObject(eventVertex);
-                    var props = eventJson["properties"];
-                    bool executed = props["executed"][0]["value"];
-                    bool included = props["included"][0]["value"];
-                    bool pending = props["pending"][0]["value"];
-
-                    string roles = props["roles"]?[0]?["value"] ?? "";
-                    string[] items = roles.Split(',');
-                    List<string> rolesList = items.Select(item => item.Trim()).ToList();
-
-                    string readroles = props["readroles"]?[0]?["value"] ?? "";
-                    string[] items2 = roles.Split(',');
-                    List<string> readrolesList = items2.Select(item => item.Trim()).ToList();
-
-                    string type = props["type"][0]["value"];
-                    var eventtype = (EventType)Enum.Parse(typeof(EventType), type, true);
-
-                    string? description = props["description"]?[0]?["value"] ?? null;
-
-                    string? label = props["label"]?[0]?["value"] ?? null;
-
-                    string? data = props["data"]?[0]?["value"] ?? null;
-                    
-                    dcrGraph.Events[eventId] = new Event(eventId)
-                    {
-                        Executed = executed,
-                        Included = included,
-                        Pending = pending,
-                        Roles = rolesList,
-                        ReadRoles = readrolesList,
-                        Type = eventtype,
-                        Description = description,
-                        Label = label,
-                        Data = data
-                    };
-                }
-
-                // Query to get all relationships between events
-                var relationshipsQuery = $"g.V().has('partitionKey', '{id}').hasLabel('Event').outE().as('e').inV().as('v').select('e', 'v')";
-                var relationshipsResult = await _gremlinClient.SubmitAsync<dynamic>(relationshipsQuery);
-
-                foreach (var result in relationshipsResult)
-                {
-                    var edge = result["e"];
-                    var targetEventVertex = result["v"];
-
-                    var edgeType = (string)edge["label"];           // Relationship type (Condition, Response, etc.)
-                    var sourceid = (string)edge["outV"];            // Source event ID
-                    var targetid = (string)targetEventVertex["id"]; // Target event ID
-
-
-                    if (edgeType == "parentOf")
-                    {
-                        dcrGraph.Events[targetid].Parent = dcrGraph.Events[sourceid];
-                        dcrGraph.Events[sourceid].Children.Add(dcrGraph.Events[targetid]);
-                    }
-                    else
-                    {
-
-                        var relationship = new Relationship(
-                        source: sourceid,
-                        target: targetid,
-                        relationshipType: Enum.Parse<RelationshipType>(edgeType, true)
-                        );
-
-                        dcrGraph.Relationships.Add(relationship);
-                    }
-                }
-
-                /* //kinda missing, but they should be generated, no?
-                         var executedEvents = new HashSet<string>(
-                    doc.Descendants("executed").Descendants("event")
-                       .Select(e => e.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id))!);
-
-                var includedEvents = new HashSet<string>(
-                    doc.Descendants("included").Descendants("event")
-                       .Select(e => e.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id))!);
-
-                var pendingEvents = new HashSet<string>(
-                    doc.Descendants("pendingResponses").Descendants("event")
-                       .Select(e => e.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id))!);
-                 */
-
-                //DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(XDocument.Load("the_ultimate_test.xml"));
-                //bool ok= graph.Equals(dcrGraph); test, but not the same object so fails
+                var dcrGraph = await RetrieveAndParseGraph(id);
                 return Ok(dcrGraph);
             }
             catch (Exception ex)
@@ -244,5 +139,139 @@ namespace RestAPI.Controllers
 
         }
 
+        [HttpPost("{graphid}")]
+        public async Task<IActionResult> ExecuteEvent([FromRoute] string graphid, [FromBody] string eventId)
+        {
+            try
+            {
+                var dcrGraph = await RetrieveAndParseGraph(graphid);
+                dcrGraph.Initialize();
+                var list = dcrGraph.ExecuteEvent(eventId);
+                
+                // Example: Logging values
+                Console.WriteLine($"Graph ID: {graphid}, Event ID: {eventId}");
+
+                // Process the request
+                return Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error retrieving graph: {ex.Message}");
+            }
+        }
+
+        async Task<DCRGraph> RetrieveAndParseGraph(string id)
+        {
+            // Query to get the DCRGraph vertex
+            var graphproperties = $"g.V().has('partitionKey', '{id}').hasLabel('DCRGraph')";
+            var metadata = (await _gremlinClient.SubmitAsync<dynamic>(graphproperties)).First();
+
+            if (metadata is null)
+                throw new Exception($"DCR Graph with ID {id} not found.");
+            var metadataJson = JToken.FromObject(metadata);
+            // Now, inspect or traverse metadataJson as needed:
+            string titleToken = metadataJson["properties"]["title"][0]["value"];
+            string gid = (string)metadata["id"];
+            var dcrGraph = new DCRGraph(titleToken)
+            {
+                Id = gid
+            };
+
+            // Query to get all events connected to this DCRGraph
+            var eventsQuery = $"g.V().has('partitionKey', '{id}').hasLabel('Event')";
+            var eventsResult = await _gremlinClient.SubmitAsync<dynamic>(eventsQuery);
+
+            foreach (var eventVertex in eventsResult)
+            {
+                var eventId = (string)eventVertex["id"];
+                var eventJson = JToken.FromObject(eventVertex);
+                var props = eventJson["properties"];
+                bool executed = props["executed"][0]["value"];
+                bool included = props["included"][0]["value"];
+                bool pending = props["pending"][0]["value"];
+
+                string roles = props["roles"]?[0]?["value"] ?? "";
+                string[] items = roles.Split(',');
+                List<string> rolesList = items.Select(item => item.Trim()).ToList();
+
+                string readroles = props["readroles"]?[0]?["value"] ?? "";
+                string[] items2 = roles.Split(',');
+                List<string> readrolesList = items2.Select(item => item.Trim()).ToList();
+
+                string type = props["type"][0]["value"];
+                var eventtype = (EventType)Enum.Parse(typeof(EventType), type, true);
+
+                string? description = props["description"]?[0]?["value"] ?? null;
+
+                string? label = props["label"]?[0]?["value"] ?? null;
+
+                string? data = props["data"]?[0]?["value"] ?? null;
+
+                dcrGraph.Events[eventId] = new Event(eventId)
+                {
+                    Executed = executed,
+                    Included = included,
+                    Pending = pending,
+                    Roles = rolesList,
+                    ReadRoles = readrolesList,
+                    Type = eventtype,
+                    Description = description,
+                    Label = label,
+                    Data = data
+                };
+            }
+
+            // Query to get all relationships between events
+            var relationshipsQuery = $"g.V().has('partitionKey', '{id}').hasLabel('Event').outE().as('e').inV().as('v').select('e', 'v')";
+            var relationshipsResult = await _gremlinClient.SubmitAsync<dynamic>(relationshipsQuery);
+
+            foreach (var result in relationshipsResult)
+            {
+                var edge = result["e"];
+                var targetEventVertex = result["v"];
+
+                var edgeType = (string)edge["label"];           // Relationship type (Condition, Response, etc.)
+                var sourceid = (string)edge["outV"];            // Source event ID
+                var targetid = (string)targetEventVertex["id"]; // Target event ID
+
+
+                if (edgeType == "parentOf")
+                {
+                    dcrGraph.Events[targetid].Parent = dcrGraph.Events[sourceid];
+                    dcrGraph.Events[sourceid].Children.Add(dcrGraph.Events[targetid]);
+                }
+                else
+                {
+
+                    var relationship = new Relationship(
+                    source: sourceid,
+                    target: targetid,
+                    relationshipType: Enum.Parse<RelationshipType>(edgeType, true)
+                    );
+
+                    dcrGraph.Relationships.Add(relationship);
+                }
+            }
+
+            /* //kinda missing, but they should be generated, no?
+                     var executedEvents = new HashSet<string>(
+                doc.Descendants("executed").Descendants("event")
+                   .Select(e => e.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id))!);
+
+            var includedEvents = new HashSet<string>(
+                doc.Descendants("included").Descendants("event")
+                   .Select(e => e.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id))!);
+
+            var pendingEvents = new HashSet<string>(
+                doc.Descendants("pendingResponses").Descendants("event")
+                   .Select(e => e.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id))!);
+             */
+
+            //DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(XDocument.Load("the_ultimate_test.xml"));
+            //bool ok= graph.Equals(dcrGraph); test, but not the same object so fails
+
+            return dcrGraph;
+            
+        }
     }
 }

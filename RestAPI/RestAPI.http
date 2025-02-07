@@ -9,3 +9,10 @@ POST {{RestAPI_HostAddress}}/dcrgraph
 GET {{RestAPI_HostAddress}}/dcrgraph/{{id}}
 
 ###
+@graphid=1987880
+POST {{RestAPI_HostAddress}}/dcrgraph/{{graphid}}
+Content-Type: application/json
+
+"Activity4"
+
+###
