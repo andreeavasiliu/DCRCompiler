@@ -12,7 +12,7 @@ public class StateUpdateCompiler
     }
 
     // Generate and compile a DynamicMethod for an event
-    public Func<DCRGraph,string,List<string>> GenerateLogicForEvent(string eventId)
+    public Func<DCRGraph, string, List<string>> GenerateLogicForEvent(string eventId)
     {
         var method = new DynamicMethod(
             $"Execute_{eventId}",
@@ -26,7 +26,7 @@ public class StateUpdateCompiler
         // Generate IL for relationship rules 
 
         List<string> targets = new List<string>();
-        
+
         foreach (var relation in Graph.Relationships)
         {
             if (relation.SourceId == eventId)
@@ -68,7 +68,7 @@ public class StateUpdateCompiler
                 }
             }
         }
-        
+
         // Clear pending state for the executed event
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
@@ -81,14 +81,14 @@ public class StateUpdateCompiler
         il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
         il.Emit(OpCodes.Ldstr, eventId);
         il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-        il.Emit(OpCodes.Ldc_I4_1); // Load constant false (Executed = true)
+        il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Executed = true)
         il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
 
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
         il.Emit(OpCodes.Ldstr, eventId);
         il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-        il.Emit(OpCodes.Ldarg_1); // Load constant false (Executed = true)
+        il.Emit(OpCodes.Ldarg_1); // Load data arg1
         il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").SetMethod);
 
         foreach (var eve in Graph.Robots)
@@ -178,8 +178,8 @@ public class StateUpdateCompiler
             il.EmitCall(OpCodes.Call, generateLogicMethod, null);
             // The call returns an Action<DCRGraph> on the evaluation stack.
             // Store it into a local variable for later use.
-            LocalBuilder actionLocal = il.DeclareLocal(typeof(Action<DCRGraph>));
-            il.Emit(OpCodes.Stloc, actionLocal);
+            LocalBuilder funcLocal = il.DeclareLocal(typeof(Func<DCRGraph, string, List<string>>));
+            il.Emit(OpCodes.Stloc, funcLocal);
 
             // --- 2. Retrieve the Event from the graph's Events dictionary ---
             // Load the graph instance (the first argument of the dynamic method)
@@ -190,18 +190,16 @@ public class StateUpdateCompiler
 
             // --- 3. Assign the delegate to the Event's CompiledLogic property ---
             // Load the delegate from the local variable.
-            il.Emit(OpCodes.Ldloc, actionLocal);
+            il.Emit(OpCodes.Ldloc, funcLocal);
             // Get the property setter for CompiledLogic.
-            MethodInfo setCompiledLogic = typeof(Event)
-                .GetProperty("CompiledLogic")
-                .GetSetMethod();
+            MethodInfo setCompiledLogic = typeof(Event).GetProperty("CompiledLogic").GetSetMethod();
             il.EmitCall(OpCodes.Callvirt, setCompiledLogic, null);
-            
+
         }
         // Return from the method
         il.Emit(OpCodes.Ldloc, listLocal);
         il.Emit(OpCodes.Ret);
 
-        return (Func<DCRGraph,string, List<string>>)method.CreateDelegate(typeof(Func<DCRGraph, string, List<string>>));
+        return (Func<DCRGraph, string, List<string>>)method.CreateDelegate(typeof(Func<DCRGraph, string, List<string>>));
     }
 }

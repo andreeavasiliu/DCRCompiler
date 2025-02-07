@@ -1,25 +1,8 @@
-using Gremlin.Net.Driver.Exceptions;
 using Gremlin.Net.Driver;
-using static Gremlin.Net.Process.Traversal.AnonymousTraversalSource;
-using static Gremlin.Net.Process.Traversal.__;
-using static Gremlin.Net.Process.Traversal.P;
-using static Gremlin.Net.Process.Traversal.Order;
-using static Gremlin.Net.Process.Traversal.Operator;
-using static Gremlin.Net.Process.Traversal.Pop;
-using static Gremlin.Net.Process.Traversal.Scope;
-using static Gremlin.Net.Process.Traversal.TextP;
-using static Gremlin.Net.Process.Traversal.Column;
-using static Gremlin.Net.Process.Traversal.Direction;
-using static Gremlin.Net.Process.Traversal.T;
+using Gremlin.Net.Driver.Exceptions;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
-using System.Xml.Linq;
-using static DCR.Core.Generator.API.Parameters;
-using DCR.IO.Xml;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
-using static Parser.token;
+using System.Xml.Linq;
 
 namespace RestAPI.Controllers
 {
@@ -66,7 +49,7 @@ namespace RestAPI.Controllers
             {
                 var graphkey = graph.Id;
                 // Add graph vertex
-                var gremlinQuery = $"g.addV('DCRGraph').property('graph', 'pk').property('partitionKey', '{graphkey}').property('id', '{graph.Id}').property('title', '{graph.Title}')";
+                var gremlinQuery = $"g.addV('DCRGraph').property('graph', '{graphkey}').property('id', '{graph.Id}').property('title', '{graph.Title}')";
                 await _gremlinClient.SubmitAsync<dynamic>(gremlinQuery);
 
                 // Insert vertices for each event
@@ -76,8 +59,7 @@ namespace RestAPI.Controllers
                     var eventObj = eventEntry.Value;
 
                     var vertexQuery = $"g.addV('Event')" +
-                                      ".property('graph', 'pk')" +
-                                      $".property('partitionKey', '{graphkey}')" +
+                                      $".property('graph', '{graphkey}')" +
                                       $".property('id', '{eventId.EscapeGremlinString()}')" +
                                       $".property('type', '{eventObj.Type}')" +
                                       $".property('executed', {eventObj.Executed.ToString().ToLower()})" +
@@ -161,31 +143,31 @@ namespace RestAPI.Controllers
                     var evt = dcrGraph.Events[item];
 
                     // Construct the update query by selecting the vertex and then setting its properties.
-                    var updateQuery = $"g.V().has('partitionKey', '{graphid}')" +
+                    var updateQuery = $"g.V().has('graph', '{graphid}')" +
                                       $".has('id', '{eventId.EscapeGremlinString()}')" +
-                                      $".property('type', '{evt.Type}')" +
-                                      $".property('executed', {evt.Executed.ToString().ToLower()})" +
-                                      $".property('included', {evt.Included.ToString().ToLower()})" +
-                                      $".property('pending', {evt.Pending.ToString().ToLower()})";
+                                      $".property(single, 'type', '{evt.Type}')" +
+                                      $".property(single, 'executed', {evt.Executed.ToString().ToLower()})" +
+                                      $".property(single, 'included', {evt.Included.ToString().ToLower()})" +
+                                      $".property(single, 'pending', {evt.Pending.ToString().ToLower()})";
 
                     if (evt.Data != null)
-                        updateQuery += $".property('data', '{evt.Data}')";
+                        updateQuery += $".property(single, 'data', '{evt.Data}')";
 
                     if (evt.Roles.Count > 0)
-                        updateQuery += $".property('roles', '{string.Join(",", evt.Roles)}')";
+                        updateQuery += $".property(single, 'roles', '{string.Join(",", evt.Roles)}')";
 
                     if (evt.ReadRoles.Count > 0)
-                        updateQuery += $".property('readRoles', '{string.Join(",", evt.ReadRoles)}')";
+                        updateQuery += $".property(single, 'readRoles', '{string.Join(",", evt.ReadRoles)}')";
 
                     if (!string.IsNullOrEmpty(evt.Description))
-                        updateQuery += $".property('description', '{evt.Description}')";
+                        updateQuery += $".property(single, 'description', '{evt.Description}')";
 
                     if (!string.IsNullOrEmpty(evt.Label))
-                        updateQuery += $".property('label', '{evt.Label}')";
+                        updateQuery += $".property(single, 'label', '{evt.Label}')";
 
-                    var eventsResult = await _gremlinClient.SubmitAsync<dynamic>(updateQuery);
+                    await _gremlinClient.SubmitAsync<dynamic>(updateQuery);
                 }
-                
+
                 // Example: Logging values
                 Console.WriteLine($"Graph ID: {graphid}, Event ID: {eventId}");
 
@@ -201,7 +183,7 @@ namespace RestAPI.Controllers
         async Task<DCRGraph> RetrieveAndParseGraph(string id)
         {
             // Query to get the DCRGraph vertex
-            var graphproperties = $"g.V().has('partitionKey', '{id}').hasLabel('DCRGraph')";
+            var graphproperties = $"g.V().has('graph', '{id}').hasLabel('DCRGraph')";
             var metadata = (await _gremlinClient.SubmitAsync<dynamic>(graphproperties)).First();
 
             if (metadata is null)
@@ -216,7 +198,7 @@ namespace RestAPI.Controllers
             };
 
             // Query to get all events connected to this DCRGraph
-            var eventsQuery = $"g.V().has('partitionKey', '{id}').hasLabel('Event')";
+            var eventsQuery = $"g.V().has('graph', '{id}').hasLabel('Event')";
             var eventsResult = await _gremlinClient.SubmitAsync<dynamic>(eventsQuery);
 
             foreach (var eventVertex in eventsResult)
@@ -260,7 +242,7 @@ namespace RestAPI.Controllers
             }
 
             // Query to get all relationships between events
-            var relationshipsQuery = $"g.V().has('partitionKey', '{id}').hasLabel('Event').outE().as('e').inV().as('v').select('e', 'v')";
+            var relationshipsQuery = $"g.V().has('graph', '{id}').hasLabel('Event').outE().as('e').inV().as('v').select('e', 'v')";
             var relationshipsResult = await _gremlinClient.SubmitAsync<dynamic>(relationshipsQuery);
 
             foreach (var result in relationshipsResult)
@@ -309,7 +291,7 @@ namespace RestAPI.Controllers
             //bool ok= graph.Equals(dcrGraph); test, but not the same object so fails
 
             return dcrGraph;
-            
+
         }
     }
 }
