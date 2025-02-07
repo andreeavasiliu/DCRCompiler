@@ -144,11 +144,11 @@ namespace RestAPI.Controllers
 
                     // Construct the update query by selecting the vertex and then setting its properties.
                     var updateQuery = $"g.V().has('graph', '{graphid}')" +
-                                      $".has('id', '{eventId.EscapeGremlinString()}')" +
-                                      $".property(single, 'type', '{evt.Type}')" +
-                                      $".property(single, 'executed', {evt.Executed.ToString().ToLower()})" +
-                                      $".property(single, 'included', {evt.Included.ToString().ToLower()})" +
-                                      $".property(single, 'pending', {evt.Pending.ToString().ToLower()})";
+                                      $".has('id', '{evt.Id.EscapeGremlinString()}')" +
+                                      $".property('type', '{evt.Type}')" +
+                                      $".property('executed', {evt.Executed.ToString().ToLower()})" +
+                                      $".property('included', {evt.Included.ToString().ToLower()})" +
+                                      $".property('pending', {evt.Pending.ToString().ToLower()})";
 
                     if (evt.Data != null)
                         updateQuery += $".property(single, 'data', '{evt.Data}')";

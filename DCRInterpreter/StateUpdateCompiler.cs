@@ -22,81 +22,25 @@ public class StateUpdateCompiler
         );
 
         var il = method.GetILGenerator();
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+        il.Emit(OpCodes.Ldstr, eventId);
+        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+        il.Emit(OpCodes.Ldarg_1);
+        il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").SetMethod);
 
         // Generate IL for relationship rules 
 
         List<string> targets = new List<string>();
 
-        foreach (var relation in Graph.Relationships)
-        {
-            if (relation.SourceId == eventId)
-            {
-                //I know it looks silly. but i'm guessing the relationships that are not covered here
-                //have incomplete pieces of code that super-break everything
-                switch (relation.Type)
-                {
-                    case RelationshipType.Response:
-                        targets.Add(relation.TargetId);
-
-                        il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
-                        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-                        il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
-                        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-                        il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Pending = true)
-                        il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
-                        break;
-                    case RelationshipType.Include:
-                        targets.Add(relation.TargetId);
-
-                        il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
-                        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-                        il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
-                        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-                        il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Included = true)
-                        il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Included").SetMethod);
-                        break;
-                    case RelationshipType.Exclude:
-                        targets.Add(relation.TargetId);
-
-                        il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
-                        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-                        il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
-                        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-                        il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Included = false)
-                        il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Included").SetMethod);
-                        break;
-                }
-            }
-        }
-
-        // Clear pending state for the executed event
-        il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-        il.Emit(OpCodes.Ldstr, eventId);
-        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-        il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Pending = false)
-        il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
-
-        il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-        il.Emit(OpCodes.Ldstr, eventId);
-        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-        il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Executed = true)
-        il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
-
-        il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-        il.Emit(OpCodes.Ldstr, eventId);
-        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-        il.Emit(OpCodes.Ldarg_1); // Load data arg1
-        il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").SetMethod);
-
-        foreach (var eve in Graph.Robots)
+        void ExecuteEvent(string eventId)
         {
             foreach (var relation in Graph.Relationships)
             {
-                if (relation.SourceId == eve.Id)
+                if (relation.SourceId == eventId)
                 {
+                    //I know it looks silly. but i'm guessing the relationships that are not covered here
+                    //have incomplete pieces of code that super-break everything
                     switch (relation.Type)
                     {
                         case RelationshipType.Response:
@@ -133,20 +77,30 @@ public class StateUpdateCompiler
                 }
             }
 
+
             // Clear pending state for the executed event
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-            il.Emit(OpCodes.Ldstr, eve.Id);
+            il.Emit(OpCodes.Ldstr, eventId);
             il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
             il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Pending = false)
             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
 
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-            il.Emit(OpCodes.Ldstr, eve.Id);
+            il.Emit(OpCodes.Ldstr, eventId);
             il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
             il.Emit(OpCodes.Ldc_I4_1); // Load constant false (Executed = true)
             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
+        }
+
+        ExecuteEvent(eventId);
+
+        foreach (var eve in Graph.Robots.IntersectBy(targets, t => t.Id))
+        {
+
+            ExecuteEvent(eve.Id);
+
         }
 
         ConstructorInfo listCtor = typeof(List<string>).GetConstructor(Type.EmptyTypes);
@@ -161,7 +115,7 @@ public class StateUpdateCompiler
         il.Emit(OpCodes.Callvirt, typeof(List<string>).GetMethod("Add")); // listLocal.Add("A")
 
 
-        foreach (var tgt in targets)
+        foreach (var tgt in targets.Distinct())
         {
             il.Emit(OpCodes.Ldloc, listLocal);    // Load listLocal
             il.Emit(OpCodes.Ldstr, tgt);          // Push "A"
