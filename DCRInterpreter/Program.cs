@@ -56,7 +56,7 @@ class Program
 
             runtime.Execute(model, model["employee_name"], DCR.Core.Data.value.NewString("Jim Bean"));
             runtime.Execute(model, model["employee_email"], DCR.Core.Data.value.NewString("jim@bean.org"));
-            runtime.Execute(model, model["start_date"], DCR.Core.Data.value.NewDate(DateTimeOffset.Now));
+            runtime.Execute(model, model["start_date"], DCR.Core.Data.value.NewDate(DateTimeOffset.MinValue));
             runtime.Execute(model, model["end_date"], DCR.Core.Data.value.NewDate(DateTimeOffset.Now));
             runtime.Execute(model, model["reason"], DCR.Core.Data.value.NewString("Tired"));
             runtime.Execute(model, model["vacation_request"]);
@@ -87,7 +87,7 @@ class Program
             var graph = original;
             graph.ExecuteEvent("employee_name", "Jim Bean");
             graph.ExecuteEvent("employee_email", "jim@bean.org");
-            graph.ExecuteEvent("start_date", DateTimeOffset.Now.ToString());
+            graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
             graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
             graph.ExecuteEvent("reason", "Tired");
             graph.ExecuteEvent("vacation_request");
