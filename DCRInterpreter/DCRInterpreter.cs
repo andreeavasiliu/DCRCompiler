@@ -177,10 +177,6 @@ public class DCRInterpreter
             e.Included = includedEvents.Contains(id);
             e.Pending = pendingEvents.Contains(id);
 
-            // Add to DCRGraph's marking sets for quick access
-            if (e.Executed) graph.ExecutedEvents.Add(id);
-            if (e.Included) graph.IncludedEvents.Add(id);
-            if (e.Pending) graph.PendingEvents.Add(id);
         }
 
         // Return the fully constructed DCRGraph
