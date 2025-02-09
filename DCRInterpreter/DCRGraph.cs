@@ -60,8 +60,13 @@
         // Check conditions: all conditions must be satisfied
         foreach (var condition in Conditions)
         {
-            if (condition.TargetId == eventId && Events[condition.SourceId].Included && !Events[condition.SourceId].Executed)
-                return false;
+            if (condition.TargetId == eventId)
+            {
+                if(!Events[condition.SourceId].Included)
+                    return false;
+                else if(!Events[condition.SourceId].Executed)
+                    return false;
+            }
         }
 
         return true;
@@ -107,13 +112,15 @@
 
         foreach (var variable in variables)
         {
+            if (variable.Value is null)
+                return false;
             expression.Parameters[variable.Key] = variable.Value;
         }
 
         return (bool)expression.Evaluate();
     }
 
-    public List<string> ExecuteEvent(string eventId, string data)
+    public List<string> ExecuteEvent(string eventId, string? data = null)
     {
         if (!Events.ContainsKey(eventId))
             throw new ArgumentException($"Event {eventId} not found.");
@@ -121,8 +128,9 @@
         var e = Events[eventId];
 
         if (!IsEventEnabled(eventId))
-            throw new InvalidOperationException($"Event {eventId} is not enabled.");
-
+            return new List<string>();
+        if (!CanExecuteEvent(eventId))
+            return new List<string>();
         // Execute precompiled logic using DynamicMethod
         return e.CompiledLogic(this, data);
     }

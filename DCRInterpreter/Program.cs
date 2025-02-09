@@ -1,15 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Xml.Linq;
 using DCR.Workflow;
-using Microsoft.Extensions.Logging;
-using static DCR.Core.Data.BuiltinModule;
-using Gremlin.Net;
-using Gremlin.Net.Driver;
-using Gremlin.Net.Driver.Exceptions;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Diagnostics;
+using System.Xml.Linq;
 
 class Program
 {
@@ -17,192 +8,103 @@ class Program
     static void Main(string[] args)
     {
         
-        //string xmlFilePath = "DCR_interpreter.xml";
-        string xmlFilePath = "the_ultimate_test.xml";
+        string xmlFilePath = "DCR-interpreter.xml";
+        //string xmlFilePath = "the_ultimate_test.xml";
 
         if (!File.Exists(xmlFilePath))
         {
             Console.WriteLine($"Error: File '{xmlFilePath}' not found.");
             return;
         }
+        DoBenchmark(XDocument.Load(xmlFilePath));
         //DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(XDocument.Load(xmlFilePath));
     }
 
-    //static public async Task InsertGraphAsync(DCRGraph graph, GremlinClient _client)
-    //{
-    //    // Insert vertices for each event
-    //    foreach (var eventEntry in graph.Events)
-    //    {
-    //        var eventId = eventEntry.Key;
-    //        var eventObj = eventEntry.Value;
+    static void DoBenchmark(XDocument doc)
+    {
+        var runtime = DCR.Workflow.Runtime.Create(builder =>
+        {
+            builder.WithOptions(options =>
+                options.UpdateModelLog = true
+            );
+        });
+        var model = runtime.Parse(doc);
 
-    //        var vertexQuery = $"g.addV('Event')" +
-    //                          ".property('graph', 'pk')" +
-    //                          $".property('id', '{eventId.EscapeGremlinString()}')" +
-    //                          $".property('type', '{eventObj.Type}')" +
-    //                          $".property('executed', {eventObj.Executed.ToString().ToLower()})" +
-    //                          $".property('included', {eventObj.Included.ToString().ToLower()})" +
-    //                          $".property('pending', {eventObj.Pending.ToString().ToLower()})";
+        var loop = 50;
+        DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(doc);
+        // Initialize and precompile logic for events
+        graph.Initialize();
+        DCRInterpreter interpreter = new DCRInterpreter(graph);
 
-    //        if (eventObj.Data != null)
-    //            vertexQuery += $".property('data', '{eventObj.Data}')";
+        BenchRuntime(runtime, model, loop);
+        BenchInterp(interpreter, graph, loop);
+        Console.ReadKey();
 
-    //        if (eventObj.Roles.Count > 0)
-    //            vertexQuery += $".property('roles', '{string.Join(",", eventObj.Roles)}')";
+    }
 
-    //        if (eventObj.ReadRoles.Count > 0)
-    //            vertexQuery += $".property('readRoles', '{string.Join(",", eventObj.ReadRoles)}')";
+    static void BenchRuntime(Runtime runtime, Model original, int loop)
+    {
+        Stopwatch stopwatch = new Stopwatch();
 
-    //        if (!string.IsNullOrEmpty(eventObj.Description))
-    //            vertexQuery += $".property('description', '{eventObj.Description}')";
-            
-    //        if(!string.IsNullOrEmpty(eventObj.Label))
-    //            vertexQuery += $".property('label', '{eventObj.Label}')";
+        int executedCount = 0;
+        
+        // Start the stopwatch
+        stopwatch.Start();
+        for (int i = 0; i < loop; i++)
+        {
+            var model = new Model(original);
 
-    //        await ExecuteQueryAsync(vertexQuery, _client);
-    //        if (eventObj.Parent != null)
-    //        {
-    //            var parentEdgeQuery = $"g.V('{eventObj.Parent.Id}').addE('parentOf').to(g.V('{eventId}'))";
-    //            await ExecuteQueryAsync(parentEdgeQuery, _client);
-    //        }
-    //    }
+            runtime.Execute(model, model["employee_name"], DCR.Core.Data.value.NewString("Jim Bean"));
+            runtime.Execute(model, model["employee_email"], DCR.Core.Data.value.NewString("jim@bean.org"));
+            runtime.Execute(model, model["start_date"], DCR.Core.Data.value.NewDate(DateTimeOffset.Now));
+            runtime.Execute(model, model["end_date"], DCR.Core.Data.value.NewDate(DateTimeOffset.Now));
+            runtime.Execute(model, model["reason"], DCR.Core.Data.value.NewString("Tired"));
+            runtime.Execute(model, model["vacation_request"]);
+            runtime.Execute(model, model["approved"], DCR.Core.Data.value.NewBool(true));
+            runtime.Execute(model, model["review_request"]);
+            runtime.Execute(model, model["submit_to_hr"]);
+        }
+        // Stop the stopwatch
+        stopwatch.Stop();
 
-    //    // Insert edges for each relationship
-    //    foreach (var relationship in graph.Relationships)
-    //    {
-    //        var edgeQuery = $"g.V('{relationship.SourceId}')" +
-    //                        $".addE('{relationship.Type}')" +
-    //                        $".to(g.V('{relationship.TargetId}'))";
+        // Get the elapsed time as a TimeSpan value
+        TimeSpan ts = stopwatch.Elapsed;
 
-    //        // Add guard properties if present
-    //        if (!string.IsNullOrEmpty(relationship.GuardExpressionId))
-    //            edgeQuery += $".property('guardExpressionId', '{relationship.GuardExpressionId}')";
+        // Format and display the TimeSpan value
+        string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+        Console.WriteLine($"RunTime Workflow {executedCount} executions:" + elapsedTime);
+    }
 
-    //        if (relationship.GuardExpression != null)
-    //            edgeQuery += $".property('guardExpressionValue', '{relationship.GuardExpression.Value}')";
+    static void BenchInterp(DCRInterpreter interpreter, DCRGraph original, int loop)
+    {
+        Stopwatch stopwatch2 = new Stopwatch();
+        int executedCount = 0;
+        // Start the stopwatch
+        stopwatch2.Start();
+        for (int i = 0; i < loop; i++)
+        {
+            var graph = original;
+            graph.ExecuteEvent("employee_name", "Jim Bean");
+            graph.ExecuteEvent("employee_email", "jim@bean.org");
+            graph.ExecuteEvent("start_date", DateTimeOffset.Now.ToString());
+            graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
+            graph.ExecuteEvent("reason", "Tired");
+            graph.ExecuteEvent("vacation_request");
+            graph.ExecuteEvent("approved", "true");
+            graph.ExecuteEvent("review_request");
+            graph.ExecuteEvent("submit_to_hr");
+        }
+        // Stop the stopwatch
+        stopwatch2.Stop();
 
-    //        await ExecuteQueryAsync(edgeQuery, _client);
-    //    }
-    //}
+        // Get the elapsed time as a TimeSpan value
+        TimeSpan ts = stopwatch2.Elapsed;
 
-
-    //static public async Task CleanDatabaseAsync(GremlinClient _client)
-    //{
-    //    try
-    //    {
-    //        // Query to drop all vertices (and their connected edges)
-    //        string query = "g.V().drop()";
-    //        await _client.SubmitAsync<dynamic>(query);
-            
-    //        Console.WriteLine("Database cleaned successfully.");
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        Console.WriteLine($"Error while cleaning the database: {ex.Message}");
-    //    }
-    //}
-
-    //static private async Task ExecuteQueryAsync(string query, GremlinClient _client)
-    //{
-    //    try
-    //    {
-    //        await _client.SubmitAsync<dynamic>(query);
-    //    }
-    //    catch (ResponseException e)
-    //    {
-    //        Console.WriteLine($"Error executing query: {query}");
-    //        Console.WriteLine($"Response status code: {e.StatusAttributes["x-ms-status-code"]}");
-    //        Console.WriteLine($"Response error message: {e.Message}");
-    //    }
-    //}
-
-    // static void Becnh(XDocument doc)
-    // {
-    //     var runtime = Runtime.Create(builder =>
-    //     {
-    //         builder.WithOptions(options =>
-    //             options.UpdateModelLog = true
-    //         );
-    //     });
-    //     var model = runtime.Parse(doc);
-
-    //     var loop = 500000;
-    //     DCRGraph graph = ParseDCRGraphFromXml(doc);
-    //     // Initialize and precompile logic for events
-    //     graph.Initialize();
-    //     DCRInterpreter interpreter = new DCRInterpreter(graph);
-
-    //     BenchRuntime(runtime, model, loop);
-    //     BenchInterp(interpreter, graph, loop);
-
-    // }
-
-    // static void BenchRuntime(Runtime runtime, Model model, int loop)
-    // {
-    //     Stopwatch stopwatch = new Stopwatch();
-
-    //     int executedCount = 0;
-    //     // Start the stopwatch
-    //     stopwatch.Start();
-    //     for (int i = 0; i < loop; i++)
-    //     {
-    //         foreach (var item in model.AllActivities)
-    //         {
-    //             if (item.IsEnabled)
-    //             {
-    //                 executedCount++;
-    //                 model.Execute(item);
-    //             }
-
-    //             else
-    //             {
-    //                 Console.WriteLine($"Event {item.Id} is not enabled.");
-    //             }
-    //         }
-    //     }
-    //     // Stop the stopwatch
-    //     stopwatch.Stop();
-
-    //     // Get the elapsed time as a TimeSpan value
-    //     TimeSpan ts = stopwatch.Elapsed;
-
-    //     // Format and display the TimeSpan value
-    //     string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
-    //         ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-    //     Console.WriteLine($"RunTime Workflow {executedCount} executions:" + elapsedTime);
-    // }
-
-    // static void BenchInterp(DCRInterpreter interpreter, DCRGraph graph, int loop)
-    // {
-    //     Stopwatch stopwatch2 = new Stopwatch();
-    //     int executedCount = 0;
-    //     // Start the stopwatch
-    //     stopwatch2.Start();
-    //     for (int i = 0; i < loop; i++)
-    //     {
-    //         foreach (var eventId in graph.Events.Keys)
-    //         {
-    //             if (interpreter.IsEventEnabled(eventId))
-    //             {
-    //                 executedCount++;
-    //                 interpreter.ExecuteEvent(eventId);
-    //             }
-    //             else
-    //             {
-    //                 Console.WriteLine($"Event {eventId} is not enabled.");
-    //             }
-    //         }
-    //     }
-    //     // Stop the stopwatch
-    //     stopwatch2.Stop();
-
-    //     // Get the elapsed time as a TimeSpan value
-    //     TimeSpan ts = stopwatch2.Elapsed;
-
-    //     // Format and display the TimeSpan value
-    //     string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
-    //         ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-    //     Console.WriteLine($"RunTime Interpreter {executedCount} executions:" + elapsedTime);
-    // }
+        // Format and display the TimeSpan value
+        string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+        Console.WriteLine($"RunTime Interpreter {executedCount} executions:" + elapsedTime);
+    }
 
 }

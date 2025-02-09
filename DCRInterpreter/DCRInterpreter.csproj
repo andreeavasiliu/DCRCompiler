@@ -15,4 +15,10 @@
     <PackageReference Include="NCalc" Version="1.3.8" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="DCR-interpreter.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
