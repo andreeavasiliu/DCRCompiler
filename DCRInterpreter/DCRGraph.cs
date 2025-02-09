@@ -36,6 +36,16 @@
         this.Title = title;
     }
 
+    public DCRGraph(DCRGraph other)
+    {
+        this.Title = other.Title;
+        this.Id = other.Id;
+        this.Relationships = new(other.Relationships);
+        this.Expressions = new(other.Expressions);
+        this.Events = new(other.Events);
+        Initialize();
+    }
+
     public void Initialize()
     {
         UpdateCompiler = new StateUpdateCompiler(this);

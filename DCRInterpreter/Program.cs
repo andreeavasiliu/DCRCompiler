@@ -30,14 +30,13 @@ class Program
         });
         var model = runtime.Parse(doc);
 
-        var loop = 1;
+        var loop = 50;
         DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(doc);
         // Initialize and precompile logic for events
         graph.Initialize();
-        DCRInterpreter interpreter = new DCRInterpreter(graph);
 
         BenchRuntime(runtime, model, loop);
-        BenchInterp(interpreter, graph, loop);
+        BenchInterp(graph, loop);
         Console.ReadKey();
 
     }
@@ -52,7 +51,9 @@ class Program
         stopwatch.Start();
         for (int i = 0; i < loop; i++)
         {
+            stopwatch.Stop();
             var model = new Model(original);
+            stopwatch.Start();
 
             runtime.Execute(model, model["employee_name"], DCR.Core.Data.value.NewString("Jim Bean"));
             runtime.Execute(model, model["employee_email"], DCR.Core.Data.value.NewString("jim@bean.org"));
@@ -76,7 +77,7 @@ class Program
         Console.WriteLine($"RunTime Workflow {executedCount} executions:" + elapsedTime);
     }
 
-    static void BenchInterp(DCRInterpreter interpreter, DCRGraph original, int loop)
+    static void BenchInterp(DCRGraph original, int loop)
     {
         Stopwatch stopwatch2 = new Stopwatch();
         int executedCount = 0;
@@ -84,7 +85,12 @@ class Program
         stopwatch2.Start();
         for (int i = 0; i < loop; i++)
         {
-            var graph = original; //yeah, doesn't actually reset it btw. reference...
+            stopwatch2.Stop();
+            DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(XDocument.Load("DCR-interpreter.xml")); //esta stupido
+            graph.Initialize();
+            //var graph = new DCRGraph(original); //its still a reference not a copy...
+            stopwatch2.Start();
+
             graph.ExecuteEvent("employee_name", "Jim Bean");
             graph.ExecuteEvent("employee_email", "jim@bean.org");
             graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
