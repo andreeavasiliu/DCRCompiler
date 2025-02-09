@@ -119,9 +119,7 @@ public class StateUpdateCompiler
 
         foreach (var eve in Graph.Robots.IntersectBy(targets, t => t.Id))
         {
-
             ExecuteEvent(eve.Id);
-
         }
 
         ConstructorInfo listCtor = typeof(List<string>).GetConstructor(Type.EmptyTypes);
