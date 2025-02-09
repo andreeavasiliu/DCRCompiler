@@ -109,9 +109,40 @@
     private bool EvaluateExpression(string expressionValue, Dictionary<string, object?>? variables)
     {
         var expression = new NCalc.Expression(expressionValue, NCalc.ExpressionOptions.AllowNullOrEmptyExpressions);
-        expression.Parameters = variables;
+        Dictionary<string, object?>? paramList = new();
+        foreach (var item in variables!)
+        {
+            if (item.Value == null) 
+            {
+                paramList.Add(item.Key, null);
+                continue;
+            };
+            if(bool.TryParse(item.Value.ToString(), out var b))
+            {
+                paramList.Add(item.Key, b);
+                continue;
+            }
+            if (int.TryParse(item.Value.ToString(), out var i)) 
+            {
+                paramList.Add(item.Key,i);
+                continue;
+            }
+            if (float.TryParse(item.Value.ToString(), out var f))
+            {
+                paramList.Add(item.Key, f);
+                continue;
+            }
+            if(DateTimeOffset.TryParse(item.Value.ToString(), out var dt))
+            {
+                paramList.Add(item.Key, dt);
+                continue;
+            }
+            paramList.Add(item.Key, item.Value);
 
-        return (bool)expression.Evaluate();
+        }
+        expression.Parameters = paramList;
+        var x = (bool)expression.Evaluate();
+        return x;
     }
 
     public List<string> ExecuteEvent(string eventId, string? data = null)
