@@ -30,7 +30,7 @@ class Program
         });
         var model = runtime.Parse(doc);
 
-        var loop = 50;
+        var loop = 1;
         DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(doc);
         // Initialize and precompile logic for events
         graph.Initialize();

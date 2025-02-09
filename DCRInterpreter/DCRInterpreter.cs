@@ -66,14 +66,30 @@ public class DCRInterpreter
             {
                 string? sourceId = relationshipElement.Attribute("sourceId")?.Value;
                 string? targetId = relationshipElement.Attribute("targetId")?.Value;
-                string? guardId = relationshipElement.Attribute("expressionId")?.Value;
+
+                string expressing = ""; //fucking fuck, goddamn fuck fuckidy fuck fuck.
+                //JUST WHY?
+                switch (type)
+                {
+                    case RelationshipType.Update:
+                        expressing = "valueExpressionId";
+                        break;
+                    case RelationshipType.Condition:
+                    case RelationshipType.Milestone:
+                        expressing = "link";
+                        break;
+                    default:
+                        expressing = "expressionId";
+                        break;
+                }
+
+                string? guardId = relationshipElement.Attribute(expressing)?.Value;
 
                 if (!string.IsNullOrEmpty(sourceId) && !string.IsNullOrEmpty(targetId))
                 {
                     Relationship relationship = new Relationship(sourceId, targetId, type)
                     {
-                        GuardExpression = graph.Expressions.FirstOrDefault(e => e.Id == guardId),
-                        GuardExpressionId = guardId
+                        GuardExpression = graph.Expressions.FirstOrDefault(e => e.Id == guardId)
                     };
                     graph.Relationships.Add(relationship);
                 }
@@ -82,7 +98,7 @@ public class DCRInterpreter
 
         void ParseLabels()
         {
-            foreach (var labelElement in doc.Element("dcrgraph")!.Element("specification")!.Element("resources")!.Element($"labelMappings")!.Elements("labelMapping"))
+            foreach (var labelElement in doc.Element("dcrgraph")!.Element("specification")!.Element("resources")!.Element("labelMappings")!.Elements("labelMapping"))
             {
                 string? id = labelElement.Element("labelMapping")?.Attribute("eventId")?.Value;
                 string? label = labelElement.Element("labelMapping")?.Attribute("labelId")?.Value;
@@ -98,7 +114,7 @@ public class DCRInterpreter
         }
         void ParseExpressions()
         {
-            foreach (var expression in doc.Element("dcrgraph")!.Element("specification")!.Element("resources")!.Element("expressions")!.Elements("expression").Where(x => x.FirstNode == null))
+            foreach (var expression in doc.Element("dcrgraph")!.Element("specification")!.Element("resources")!.Element("expressions")!.Elements("expression").Where(x => x.FirstNode == null)) //why? the last part
             {
                 string? id = expression.Attribute("id")?.Value;
                 string? expressionString = expression.Attribute("value")?.Value;
@@ -130,11 +146,13 @@ public class DCRInterpreter
         ParseExpressions();
 
         // Parse all relationship types
+        //there is a +"s"
         ParseRelationships("response", RelationshipType.Response);
         ParseRelationships("condition", RelationshipType.Condition);
         ParseRelationships("inclusion", RelationshipType.Include);
         ParseRelationships("exclusion", RelationshipType.Exclude);
         ParseRelationships("milestone", RelationshipType.Milestone);
+        ParseRelationships("update", RelationshipType.Update);
         ParseLabels();
         SetDefaults();
 

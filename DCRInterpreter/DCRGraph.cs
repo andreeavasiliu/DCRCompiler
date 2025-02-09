@@ -12,7 +12,7 @@
     public HashSet<string> ExecutedEvents { get; set; } = new();
 
     private StateUpdateCompiler UpdateCompiler = null!;
-    public IEnumerable<Event> Robots => Events.Where(e => e.Value.Included && e.Value.Pending && e.Value.IsRobot() && IsEventEnabled(e.Key)).Select(e => e.Value);
+    public IEnumerable<Event> Robots => Events.Where(e => e.Value.Included && e.Value.Pending && e.Value.IsRobot()).Select(e => e.Value);
     public IEnumerable<Relationship> Conditions => Relationships.Where(r => r.Type is RelationshipType.Condition);
     public IEnumerable<Relationship> Responses => Relationships.Where(r => r.Type is RelationshipType.Response);
     public IEnumerable<Relationship> Inclusions => Relationships.Where(r => r.Type is RelationshipType.Include);
@@ -60,13 +60,8 @@
         // Check conditions: all conditions must be satisfied
         foreach (var condition in Conditions)
         {
-            if (condition.TargetId == eventId)
-            {
-                if(!Events[condition.SourceId].Included)
-                    return false;
-                else if(!Events[condition.SourceId].Executed)
-                    return false;
-            }
+            if (condition.TargetId == eventId && Events[condition.SourceId].Included && !Events[condition.SourceId].Executed)
+                return false;
         }
 
         return true;
@@ -106,11 +101,12 @@
         return true;
     }
 
-    private bool EvaluateExpression(string expressionValue, Dictionary<string, object?>? variables)
+    public static bool EvaluateExpression(string expressionValue, Dictionary<string, object?>? variables)
     {
         var expression = new NCalc.Expression(expressionValue, NCalc.ExpressionOptions.AllowNullOrEmptyExpressions);
         Dictionary<string, object?>? paramList = new();
-        foreach (var item in variables!)
+        if(variables != null)
+        foreach (var item in variables)
         {
             if (item.Value == null) 
             {
@@ -166,7 +162,7 @@ public class Relationship
     public string SourceId { get; private set; }
     public string TargetId { get; private set; }
     public RelationshipType Type { get; private set; }
-    public string? GuardExpressionId { get; set; }
+    public string? GuardExpressionId => GuardExpression?.Id;
     public DcrExpression? GuardExpression { get; set; }
 
     public Relationship( string source, string target, RelationshipType relationshipType)
@@ -189,5 +185,6 @@ public enum RelationshipType
     Response,
     Include,
     Exclude,
-    Milestone
+    Milestone,
+    Update
 }

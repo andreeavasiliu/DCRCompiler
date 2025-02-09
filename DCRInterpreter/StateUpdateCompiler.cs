@@ -12,7 +12,7 @@ public class StateUpdateCompiler
     }
 
     // Generate and compile a DynamicMethod for an event
-    public Func<DCRGraph, string, List<string>> GenerateLogicForEvent(string eventId)
+    public Func<DCRGraph, string?, List<string>> GenerateLogicForEvent(string eventId)
     {
         var method = new DynamicMethod(
             $"Execute_{eventId}",
@@ -72,6 +72,27 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Included = false)
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Included").SetMethod);
+                            break;
+                        case RelationshipType.Update:
+                            targets.Add(relation.TargetId);
+
+                            il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
+                            il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+                            il.Emit(OpCodes.Ldstr, relation.GuardExpression.Value); // Load target ID
+                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetGetMethod());
+
+                            /*constructor??*/
+                            LocalBuilder sourceData = il.DeclareLocal(typeof(object));
+                            il.Emit(OpCodes.Stloc, sourceData);
+
+                            il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
+                            il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+                            il.Emit(OpCodes.Ldstr, relation.GuardExpression.Value); // Load target ID
+                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Ldloc, sourceData);
+                            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetSetMethod());
+
                             break;
                     }
                 }
@@ -154,6 +175,6 @@ public class StateUpdateCompiler
         il.Emit(OpCodes.Ldloc, listLocal);
         il.Emit(OpCodes.Ret);
 
-        return (Func<DCRGraph, string, List<string>>)method.CreateDelegate(typeof(Func<DCRGraph, string, List<string>>));
+        return (Func<DCRGraph, string?, List<string>>)method.CreateDelegate(typeof(Func<DCRGraph, string?, List<string>>));
     }
 }

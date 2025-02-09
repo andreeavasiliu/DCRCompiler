@@ -12,7 +12,7 @@ public class Event
     public object? Data { get; set; }
     public List<string> Roles { get; set; } = new();
     public List<string> ReadRoles { get; set; } = new();
-    public Func<DCRGraph,string, List<string>> CompiledLogic { get; set; } = null!;
+    public Func<DCRGraph,string?, List<string>> CompiledLogic { get; set; } = null!;
     public List<Event> Children { get; set; } = new();
     public Event? Parent { get; set; }
     public Event(string id)
