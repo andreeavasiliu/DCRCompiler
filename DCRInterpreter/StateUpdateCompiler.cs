@@ -35,10 +35,56 @@ public class StateUpdateCompiler
 
         void ExecuteEvent(string eventId)
         {
+            // Clear pending state for the executed event
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+            il.Emit(OpCodes.Ldstr, eventId);
+            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+            il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Pending = false)
+            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
+
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+            il.Emit(OpCodes.Ldstr, eventId);
+            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+            il.Emit(OpCodes.Ldc_I4_1); // Load constant false (Executed = true)
+            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
             foreach (var relation in Graph.Relationships)
             {
-                if (relation.SourceId == eventId)
+                if (relation.SourceId == eventId && relation.Type != RelationshipType.Update)
                 {
+                    Label continueLabel = il.DefineLabel();
+                    if (relation.GuardExpressionId != null)
+                    {
+                        // Load DCRGraph parameter
+                        il.Emit(OpCodes.Ldarg_0);
+
+                        // Load Expressions property
+                        il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Expressions")?.GetGetMethod()
+                            ?? throw new Exception("Expressions property not found"));
+
+                        // Load guard expression ID
+                        il.Emit(OpCodes.Ldstr, relation.GuardExpressionId);
+
+                        // Call get_Item on Dictionary<string, DcrExpression>
+                        var getItemMethod = typeof(Dictionary<string, DcrExpression>)
+                            .GetMethod("get_Item", new[] { typeof(string) })
+                            ?? throw new Exception("Dictionary get_Item(string) method not found");
+
+                        il.Emit(OpCodes.Callvirt, getItemMethod);
+
+                        // Load DCRGraph instance again as an argument for Evaluate()
+                        il.Emit(OpCodes.Ldarg_0);
+
+                        // Call Evaluate(DCRGraph)
+                        var evalMethod = typeof(DcrExpression).GetMethod("Evaluate", new[] { typeof(DCRGraph) })
+                            ?? throw new Exception("Evaluate(DCRGraph) method not found");
+
+                        il.Emit(OpCodes.Callvirt, evalMethod);
+
+                        // Branch if Evaluate() returns false
+                        il.Emit(OpCodes.Brfalse, continueLabel);
+                    }
                     //I know it looks silly. but i'm guessing the relationships that are not covered here
                     //have incomplete pieces of code that super-break everything
                     switch (relation.Type)
@@ -94,7 +140,7 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
                             il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldloc, sourceData);
-                            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetSetMethod()); 
+                            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetSetMethod());
 
 
                             // Clear pending state for the executed target
@@ -114,24 +160,9 @@ public class StateUpdateCompiler
 
                             break;
                     }
+                    il.MarkLabel(continueLabel);
                 }
             }
-
-
-            // Clear pending state for the executed event
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-            il.Emit(OpCodes.Ldstr, eventId);
-            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-            il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Pending = false)
-            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
-
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-            il.Emit(OpCodes.Ldstr, eventId);
-            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
-            il.Emit(OpCodes.Ldc_I4_1); // Load constant false (Executed = true)
-            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
         }
 
         ExecuteEvent(eventId);

@@ -18,7 +18,7 @@
     public IEnumerable<Relationship> Inclusions => Relationships.Where(r => r.Type is RelationshipType.Include);
     public IEnumerable<Relationship> Exclusions => Relationships.Where(r => r.Type is RelationshipType.Exclude);
     public IEnumerable<Relationship> Milestones => Relationships.Where(r => r.Type is RelationshipType.Milestone);
-    public List<DcrExpression> Expressions { get; set; } = new List<DcrExpression>();
+    public Dictionary<string, DcrExpression> Expressions { get; set; } = new Dictionary<string, DcrExpression>();
     public Dictionary<string, object?> Values {
         get
         {
@@ -96,17 +96,10 @@
                 return false;
         }
 
-        foreach (var relation in Relationships.Where(r => r.TargetId == eventId && !string.IsNullOrEmpty(r.GuardExpressionId)))
+        if(eventToExecute.Parent != null)
         {
-            var expression = Expressions.FirstOrDefault(e => e.Id == relation.GuardExpressionId);
-             if (expression != null)
-            {
-                var variables = Values.Where(v => expression.Value.Contains(v.Key)).ToDictionary(v => v.Key, v => v.Value);
-                if (!EvaluateExpression(expression.Value, variables))
-                    return false;
-            }
+            return CanExecuteEvent(eventToExecute.Parent.Id);
         }
-
 
         return true;
     }
@@ -186,6 +179,12 @@ public class DcrExpression
 {
     public string Id { get; set; } // Unique identifier for the expression
     public string Value { get; set; } // The actual expression (e.g., "count(global) > 1")
+
+    public bool Evaluate(DCRGraph graph)
+    {
+        var values = graph.Values.Where(v => Value.Contains(v.Key)).ToDictionary(v => v.Key, v => v.Value);
+        return DCRGraph.EvaluateExpression(Value, values);
+    }
 }
 
 

@@ -89,7 +89,7 @@ public class DCRInterpreter
                 {
                     Relationship relationship = new Relationship(sourceId, targetId, type)
                     {
-                        GuardExpression = graph.Expressions.FirstOrDefault(e => e.Id == guardId)
+                        GuardExpression = graph.Expressions.FirstOrDefault(k => k.Key == guardId).Value
                     };
                     graph.Relationships.Add(relationship);
                 }
@@ -122,7 +122,7 @@ public class DCRInterpreter
                 if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(expressionString))
                 {
                     DcrExpression newExpression = new DcrExpression { Id = id, Value = expressionString };
-                    graph.Expressions.Add(newExpression);
+                    graph.Expressions.Add(id, newExpression);
                 }
             }
         }
