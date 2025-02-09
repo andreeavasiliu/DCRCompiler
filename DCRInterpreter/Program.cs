@@ -1,6 +1,7 @@
 using DCR.Workflow;
 using System.Diagnostics;
 using System.Xml.Linq;
+using static DCR.Core.Generator;
 
 class Program
 {
@@ -28,32 +29,29 @@ class Program
                 options.UpdateModelLog = true
             );
         });
-        var model = runtime.Parse(doc);
 
-        var maxmilisec = 1000; //60000ms = 60 sec
-        DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(doc);
-        // Initialize and precompile logic for events
-        graph.Initialize();
+        var maxmilisec = 10000; //60000ms = 60 sec
 
-        BenchRuntime(runtime, model, maxmilisec);
-        BenchInterp(graph, maxmilisec);
+        BenchRuntime(runtime, doc, maxmilisec);
+        BenchInterp(doc, maxmilisec);
         Console.ReadKey();
 
     }
 
-    static void BenchRuntime(Runtime runtime, Model original, int maxtime)
+    static void BenchRuntime(Runtime runtime, XDocument original, int maxtime)
     {
-        Stopwatch stopwatch = new Stopwatch();
-
+        Stopwatch execute = new Stopwatch();
+        Stopwatch parse = new Stopwatch();
         int loop = 0;
         int executedCount = 0;
         
-        while (stopwatch.ElapsedMilliseconds <= maxtime)
+        while (execute.ElapsedMilliseconds <= maxtime)
         {
-            
-            var model = new Model(original);
+            parse.Start();
+            var model = runtime.Parse(original);
+            parse.Stop();
 
-            stopwatch.Start();
+            execute.Start();
 
             runtime.Execute(model, model["employee_name"], DCR.Core.Data.value.NewString("Jim Bean"));
             runtime.Execute(model, model["employee_email"], DCR.Core.Data.value.NewString("jim@bean.org"));
@@ -65,35 +63,46 @@ class Program
             runtime.Execute(model, model["review_request"]);
             runtime.Execute(model, model["submit_to_hr"]);
 
-            stopwatch.Stop();
+            execute.Stop();
             executedCount += 9;
             loop++;
         }
 
-        // Get the elapsed time as a TimeSpan value
-        TimeSpan ts = stopwatch.Elapsed;
 
         // Format and display the TimeSpan value
+        TimeSpan ts = execute.Elapsed;
         string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+
+        TimeSpan ts2 = parse.Elapsed;
+        string elapsedParseTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts2.Hours, ts2.Minutes, ts2.Seconds, ts2.Milliseconds / 10);
+
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine($"RunTime Workflow executed:");
         Console.WriteLine($"        the entire graph {loop} times!");
         Console.WriteLine($"        that is {executedCount} total activities");
         Console.WriteLine($"        and took {elapsedTime} to finish");
+        Console.WriteLine($"            *parsing time was not included in this time");
+        Console.WriteLine();
+        Console.WriteLine($"Parsing with Workflow {loop} times took {elapsedParseTime} to finish");
+        Console.WriteLine();
     }
 
-    static void BenchInterp(DCRGraph original, int maxtime)
+    static void BenchInterp(XDocument original, int maxtime)
     {
-        Stopwatch stopwatch2 = new Stopwatch();
+        Stopwatch execute = new Stopwatch();
+        Stopwatch parse = new Stopwatch();
         int loop = 0;
         int executedCount = 0;
-        while (stopwatch2.ElapsedMilliseconds <= maxtime)
+        while (execute.ElapsedMilliseconds <= maxtime)
         {
-            DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(XDocument.Load("DCR-interpreter.xml")); //esta stupido
+            parse.Start();
+            DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(original); 
             graph.Initialize();
-            //var graph = new DCRGraph(original); //its still a reference not a copy...
-            stopwatch2.Start();
+            parse.Stop();
+
+            execute.Start();
 
             graph.ExecuteEvent("employee_name", "Jim Bean");
             graph.ExecuteEvent("employee_email", "jim@bean.org");
@@ -106,22 +115,28 @@ class Program
             graph.ExecuteEvent("submit_to_hr");
 
             
-            stopwatch2.Stop();
+            execute.Stop();
             executedCount += 9;
             loop++;
         }
-
-        // Get the elapsed time as a TimeSpan value
-        TimeSpan ts = stopwatch2.Elapsed;
-
         // Format and display the TimeSpan value
+        TimeSpan ts = execute.Elapsed;
         string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+
+        TimeSpan ts2 = parse.Elapsed;
+        string elapsedParseTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts2.Hours, ts2.Minutes, ts2.Seconds, ts2.Milliseconds / 10);
+
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine($"RunTime Interpreted executed:");
         Console.WriteLine($"        the entire graph {loop} times!");
         Console.WriteLine($"        that is {executedCount} total activities");
         Console.WriteLine($"        and took {elapsedTime} to finish");
+        Console.WriteLine($"            *parsing time was not included in this time");
+        Console.WriteLine();
+        Console.WriteLine($"Parsing with Interpreter {loop} times took {elapsedParseTime} to finish");
+        Console.WriteLine();
     }
 
 }
