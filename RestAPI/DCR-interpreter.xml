@@ -1,7 +1,7 @@
 <dcrgraph title="DCR-interpreter" dataTypesStatus="hide" filterLevel="-1" insightFilter="false" zoomLevel="-2" formGroupStyle="Normal" formLayoutStyle="Horizontal" formShowPendingCount="true" graphBG="#f1f6fe" graphType="0" exercise="false" version="1.1">
     <meta>
-        <graph id="1988223" hash="CF53ED80B88F922CC3019ECC09BE221F" guid="F9D94BC6-2A13-484D-ADAC-113C8D8E0375" OwnerName="Andreea Vasiliu" OwnerId="140094" categoryId="7554" categoryTitle="Default"/>
-        <revision id="4510388" type="minor" date="2025-02-06T21:50:59.150"/>
+        <graph id="1988223" hash="9D2BD1BF1F602DB2825945B0843B2A2C" guid="F9D94BC6-2A13-484D-ADAC-113C8D8E0375" OwnerName="Andreea Vasiliu" OwnerId="140094" categoryId="7554" categoryTitle="Default"/>
+        <revision id="4516945" type="minor" date="2025-02-09T15:23:02.690"/>
         <organization id="14" name="DCR Solutions"/>
     </meta>
     <specification>
@@ -574,8 +574,8 @@
             </labelMappings>
             <expressions>
                 <expression id="vacation_request-path-robot--response" value="start_date &lt; end_date"/>
-                <expression id="review_request-path-submit_to_hr--response" value="approved=1"/>
-                <expression id="review_request-path-vacation_request--response" value="approved=0"/>
+                <expression id="review_request-path-submit_to_hr--response" value="approved=true"/>
+                <expression id="review_request-path-vacation_request--response" value="approved=false"/>
                 <expression id="review_request-path-vacation_request--include" value="approved=0"/>
                 <expression id="review_request-path-submit_to_hr--include" value="approved=1"/>
                 <expression id="robot-path-e_n--update--value" value="employee_name"/>
@@ -665,7 +665,9 @@
             <globalMarking/>
         </custom>
         <marking>
-            <globalStore/>
+            <globalStore>
+                <variable id="approved" value="false" isNull="false" type="expr"/>
+            </globalStore>
             <executed/>
             <included>
                 <event id="vacation_request"/>

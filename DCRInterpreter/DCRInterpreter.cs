@@ -111,6 +111,22 @@ public class DCRInterpreter
             }
         }
 
+        void SetDefaults()
+        {
+            foreach (var variable in doc.Element("dcrgraph")!.Element("runtime")!.Element("marking")!.Element("globalStore")!.Elements("variable"))
+            {
+                string? id = variable.Attribute("id")?.Value;
+                string? value = variable.Attribute("value")?.Value;
+                if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(value))
+                {
+                    if (graph.Events.ContainsKey(id) && graph.Events[id].Data == null)
+                    {
+                        graph.Events[id].Data = value;
+                    }
+                }
+            }
+        }
+
         ParseExpressions();
 
         // Parse all relationship types
@@ -120,6 +136,7 @@ public class DCRInterpreter
         ParseRelationships("exclusion", RelationshipType.Exclude);
         ParseRelationships("milestone", RelationshipType.Milestone);
         ParseLabels();
+        SetDefaults();
 
         // Parse markings for executed, included, and pending events
         var executedEvents = new HashSet<string>(
