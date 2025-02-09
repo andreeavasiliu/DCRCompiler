@@ -82,8 +82,7 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetGetMethod());
 
-                            /*constructor??*/
-                            LocalBuilder sourceData = il.DeclareLocal(typeof(object));
+                            LocalBuilder sourceData = il.DeclareLocal(typeof(object)); //works with null
                             il.Emit(OpCodes.Stloc, sourceData);
 
                             il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
