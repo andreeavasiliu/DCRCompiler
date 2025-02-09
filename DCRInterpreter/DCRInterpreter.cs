@@ -149,7 +149,7 @@ public class DCRInterpreter
         //there is a +"s"
         ParseRelationships("response", RelationshipType.Response);
         ParseRelationships("condition", RelationshipType.Condition);
-        ParseRelationships("inclusion", RelationshipType.Include);
+        ParseRelationships("include", RelationshipType.Include);
         ParseRelationships("exclusion", RelationshipType.Exclude);
         ParseRelationships("milestone", RelationshipType.Milestone);
         ParseRelationships("update", RelationshipType.Update);
