@@ -88,7 +88,7 @@ public class StateUpdateCompiler
 
                             il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
                             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
-                            il.Emit(OpCodes.Ldstr, relation.GuardExpression.Value); // Load target ID
+                            il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
                             il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldloc, sourceData);
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetSetMethod());
