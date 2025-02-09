@@ -117,14 +117,14 @@
                 paramList.Add(item.Key, null);
                 continue;
             };
-            if(bool.TryParse(item.Value.ToString(), out var b))
-            {
-                paramList.Add(item.Key, b);
-                continue;
-            }
             if (int.TryParse(item.Value.ToString(), out var i)) 
             {
                 paramList.Add(item.Key,i);
+                continue;
+            }
+            if (bool.TryParse(item.Value.ToString(), out var b))
+            {
+                paramList.Add(item.Key, b);
                 continue;
             }
             if (float.TryParse(item.Value.ToString(), out var f))
