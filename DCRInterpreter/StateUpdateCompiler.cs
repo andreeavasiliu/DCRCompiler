@@ -53,6 +53,7 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Pending = true)
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
                             break;
+
                         case RelationshipType.Include:
                             targets.Add(relation.TargetId);
 
@@ -63,6 +64,7 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Included = true)
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Included").SetMethod);
                             break;
+
                         case RelationshipType.Exclude:
                             targets.Add(relation.TargetId);
 
@@ -73,9 +75,11 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Included = false)
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Included").SetMethod);
                             break;
+
                         case RelationshipType.Update:
                             targets.Add(relation.TargetId);
 
+                            //Copy Data from guard source to relation target
                             il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
                             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
                             il.Emit(OpCodes.Ldstr, relation.GuardExpression.Value); // Load target ID
@@ -90,7 +94,23 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
                             il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldloc, sourceData);
-                            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetSetMethod());
+                            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetSetMethod()); 
+
+
+                            // Clear pending state for the executed target
+                            il.Emit(OpCodes.Ldarg_0);
+                            il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+                            il.Emit(OpCodes.Ldstr, relation.TargetId);
+                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Pending = false)
+                            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
+
+                            il.Emit(OpCodes.Ldarg_0);
+                            il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
+                            il.Emit(OpCodes.Ldstr, relation.TargetId);
+                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Ldc_I4_1); // Load constant false (Executed = true)
+                            il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
 
                             break;
                     }

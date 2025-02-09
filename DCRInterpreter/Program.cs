@@ -84,7 +84,7 @@ class Program
         stopwatch2.Start();
         for (int i = 0; i < loop; i++)
         {
-            var graph = original;
+            var graph = original; //yeah, doesn't actually reset it btw. reference...
             graph.ExecuteEvent("employee_name", "Jim Bean");
             graph.ExecuteEvent("employee_email", "jim@bean.org");
             graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
