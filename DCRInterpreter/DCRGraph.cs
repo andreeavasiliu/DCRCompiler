@@ -108,7 +108,7 @@
 
     private bool EvaluateExpression(string expressionValue, Dictionary<string, object?>? variables)
     {
-        var expression = new NCalc.Expression(expressionValue, NCalc.EvaluateOptions.IgnoreCase);
+        var expression = new NCalc.Expression(expressionValue, NCalc.ExpressionOptions.AllowNullOrEmptyExpressions);
         expression.Parameters = variables;
 
         return (bool)expression.Evaluate();
