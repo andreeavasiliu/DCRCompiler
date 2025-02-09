@@ -30,29 +30,29 @@ class Program
         });
         var model = runtime.Parse(doc);
 
-        var loop = 50;
+        var maxmilisec = 1000; //60000ms = 60 sec
         DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(doc);
         // Initialize and precompile logic for events
         graph.Initialize();
 
-        BenchRuntime(runtime, model, loop);
-        BenchInterp(graph, loop);
+        BenchRuntime(runtime, model, maxmilisec);
+        BenchInterp(graph, maxmilisec);
         Console.ReadKey();
 
     }
 
-    static void BenchRuntime(Runtime runtime, Model original, int loop)
+    static void BenchRuntime(Runtime runtime, Model original, int maxtime)
     {
         Stopwatch stopwatch = new Stopwatch();
 
+        int loop = 0;
         int executedCount = 0;
         
-        // Start the stopwatch
-        stopwatch.Start();
-        for (int i = 0; i < loop; i++)
+        while (stopwatch.ElapsedMilliseconds <= maxtime)
         {
-            stopwatch.Stop();
+            
             var model = new Model(original);
+
             stopwatch.Start();
 
             runtime.Execute(model, model["employee_name"], DCR.Core.Data.value.NewString("Jim Bean"));
@@ -64,9 +64,11 @@ class Program
             runtime.Execute(model, model["approved"], DCR.Core.Data.value.NewBool(true));
             runtime.Execute(model, model["review_request"]);
             runtime.Execute(model, model["submit_to_hr"]);
+
+            stopwatch.Stop();
+            executedCount += 9;
+            loop++;
         }
-        // Stop the stopwatch
-        stopwatch.Stop();
 
         // Get the elapsed time as a TimeSpan value
         TimeSpan ts = stopwatch.Elapsed;
@@ -74,18 +76,20 @@ class Program
         // Format and display the TimeSpan value
         string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-        Console.WriteLine($"RunTime Workflow {executedCount} executions:" + elapsedTime);
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"RunTime Workflow executed:");
+        Console.WriteLine($"        the entire graph {loop} times!");
+        Console.WriteLine($"        that is {executedCount} total activities");
+        Console.WriteLine($"        and took {elapsedTime} to finish");
     }
 
-    static void BenchInterp(DCRGraph original, int loop)
+    static void BenchInterp(DCRGraph original, int maxtime)
     {
         Stopwatch stopwatch2 = new Stopwatch();
+        int loop = 0;
         int executedCount = 0;
-        // Start the stopwatch
-        stopwatch2.Start();
-        for (int i = 0; i < loop; i++)
+        while (stopwatch2.ElapsedMilliseconds <= maxtime)
         {
-            stopwatch2.Stop();
             DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(XDocument.Load("DCR-interpreter.xml")); //esta stupido
             graph.Initialize();
             //var graph = new DCRGraph(original); //its still a reference not a copy...
@@ -100,9 +104,12 @@ class Program
             graph.ExecuteEvent("approved", "true");
             graph.ExecuteEvent("review_request");
             graph.ExecuteEvent("submit_to_hr");
+
+            
+            stopwatch2.Stop();
+            executedCount += 9;
+            loop++;
         }
-        // Stop the stopwatch
-        stopwatch2.Stop();
 
         // Get the elapsed time as a TimeSpan value
         TimeSpan ts = stopwatch2.Elapsed;
@@ -110,7 +117,11 @@ class Program
         // Format and display the TimeSpan value
         string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-        Console.WriteLine($"RunTime Interpreter {executedCount} executions:" + elapsedTime);
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"RunTime Interpreted executed:");
+        Console.WriteLine($"        the entire graph {loop} times!");
+        Console.WriteLine($"        that is {executedCount} total activities");
+        Console.WriteLine($"        and took {elapsedTime} to finish");
     }
 
 }
