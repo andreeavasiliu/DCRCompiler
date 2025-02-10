@@ -56,53 +56,34 @@
             e.CompiledLogic = UpdateCompiler.GenerateLogicForEvent(e.Id);
         }
     }
-     public bool IsEventEnabled(string eventId)
-    {
-        if (!Events.ContainsKey(eventId))
-            return false;
 
-        var e = Events[eventId];
+    // public bool CanExecuteEvent(string eventId)
+    // {
+    //     var eventToExecute = Events.FirstOrDefault(e => e.Key == eventId).Value;
+    //     if (eventToExecute == null || !eventToExecute.Included)
+    //         return false;
 
-        // An event must be included to be enabled
-        if (!e.Included)
-            return false;
+    //     // Check conditions
+    //     foreach (var condition in Conditions.Where(r => r.TargetId == eventId))
+    //     {
+    //         if (!ExecutedEvents.Contains(condition.SourceId))
+    //             return false;
+    //     }
 
-        // Check conditions: all conditions must be satisfied
-        foreach (var condition in Conditions)
-        {
-            if (condition.TargetId == eventId && Events[condition.SourceId].Included && !Events[condition.SourceId].Executed)
-                return false;
-        }
+    //     // Check milestone constraints
+    //     foreach (var milestone in Milestones.Where(r => r.TargetId == eventId))
+    //     {
+    //         if (!ExecutedEvents.Contains(milestone.SourceId))
+    //             return false;
+    //     }
 
-        return true;
-    }
-    public bool CanExecuteEvent(string eventId)
-    {
-        var eventToExecute = Events.FirstOrDefault(e => e.Key == eventId).Value;
-        if (eventToExecute == null || !eventToExecute.Included)
-            return false;
+    //     if(eventToExecute.Parent != null)
+    //     {
+    //         return CanExecuteEvent(eventToExecute.Parent.Id);
+    //     }
 
-        // Check conditions
-        foreach (var condition in Conditions.Where(r => r.TargetId == eventId))
-        {
-            if (!ExecutedEvents.Contains(condition.SourceId))
-                return false;
-        }
-
-        // Check milestone constraints
-        foreach (var milestone in Milestones.Where(r => r.TargetId == eventId))
-        {
-            if (!ExecutedEvents.Contains(milestone.SourceId))
-                return false;
-        }
-
-        if(eventToExecute.Parent != null)
-        {
-            return CanExecuteEvent(eventToExecute.Parent.Id);
-        }
-
-        return true;
-    }
+    //     return true;
+    // }
 
     public static bool EvaluateExpression(string expressionValue, Dictionary<string, object?>? variables)
     {
@@ -150,11 +131,6 @@
             throw new ArgumentException($"Event {eventId} not found.");
 
         var e = Events[eventId];
-
-        if (!IsEventEnabled(eventId))
-            return new List<string>();
-        if (!CanExecuteEvent(eventId))
-            return new List<string>();
         // Execute precompiled logic using DynamicMethod
         return e.CompiledLogic(this, data);
     }

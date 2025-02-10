@@ -136,6 +136,8 @@ namespace RestAPI.Controllers
                 string data = request.Data;
                 var dcrGraph = await RetrieveAndParseGraph(graphid); //Get graph from somewhere. Beyond the scope of the project
                 dcrGraph.Initialize();
+                if(!await CanExecuteEvent(eventId, graphid))
+                    return BadRequest("Event cannot be executed.");
                 var list = dcrGraph.ExecuteEvent(eventId, data);
 
                 foreach (var item in list)
@@ -293,5 +295,54 @@ namespace RestAPI.Controllers
             return dcrGraph;
 
         }
+        public async Task<bool> CanExecuteEvent(string eventId, string graphId)
+        {
+            // Gremlin query to check if the event can be executed
+            var query = $@"
+                g.V().has('graph', '{graphId}')
+                .has('id', '{eventId.EscapeGremlinString()}')
+                .has('included', true)
+                .as('event')
+                .not(
+                    __.inE('Condition')
+                    .outV()
+                    .has('executed', false)
+                )
+                .not(
+                    __.inE('Milestone')
+                    .outV()
+                    .has('executed', false)
+                )
+                .repeat(
+                    __.inE('parentOf').outV() 
+                    .hasLabel('Event')
+                    .has('included', true)
+                    .not(
+                        __.inE('Condition')
+                            .outV()
+                            .has('executed', false)
+                    )
+                    .not(
+                        __.inE('Milestone')
+                            .outV()
+                            .has('executed', false)
+                    )
+                )
+                .until(__.not(__.inE('parentOf')))
+                .count()
+                .choose(__.is(gt(0)), constant(true), constant(false))";
+            try
+            {
+                var result = await _gremlinClient.SubmitAsync<bool>(query);
+                return result.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error executing CanExecuteEvent query: {ex.Message}");
+                return false;
+            }
+        }
+
     }
 }
+
