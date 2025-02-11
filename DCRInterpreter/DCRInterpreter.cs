@@ -67,8 +67,7 @@ public class DCRInterpreter
                 string? sourceId = relationshipElement.Attribute("sourceId")?.Value;
                 string? targetId = relationshipElement.Attribute("targetId")?.Value;
 
-                string expressing = ""; //fucking fuck, goddamn fuck fuckidy fuck fuck.
-                //JUST WHY?
+                string expressing = ""; //dcr further differentiate id type
                 switch (type)
                 {
                     case RelationshipType.Update:
@@ -146,7 +145,7 @@ public class DCRInterpreter
         ParseExpressions();
 
         // Parse all relationship types
-        //there is a +"s"
+        //there is a + "s" added to the name. be mindful of that
         ParseRelationships("response", RelationshipType.Response);
         ParseRelationships("condition", RelationshipType.Condition);
         ParseRelationships("include", RelationshipType.Include);
