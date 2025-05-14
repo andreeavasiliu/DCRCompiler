@@ -8,8 +8,8 @@ class Program
    
     static void Main(string[] args)
     {
-        
-        string xmlFilePath = "DCR-interpreter.xml";
+        string xmlFilePath = "job_interview.xml";
+        //string xmlFilePath = "DCR-interpreter.xml";
         //string xmlFilePath = "the_ultimate_test.xml";
 
         if (!File.Exists(xmlFilePath))
@@ -32,7 +32,7 @@ class Program
 
         var maxmilisec = 10000; //60000ms = 60 sec
 
-        BenchRuntime(runtime, doc, maxmilisec);
+        //BenchRuntime(runtime, doc, maxmilisec);
         BenchInterp(doc, maxmilisec);
         Console.ReadKey();
 
@@ -104,17 +104,36 @@ class Program
 
             execute.Start();
 
-            graph.ExecuteEvent("employee_name", "Jim Bean");
-            graph.ExecuteEvent("employee_email", "jim@bean.org");
-            graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
-            graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
-            graph.ExecuteEvent("reason", "Tired");
-            graph.ExecuteEvent("vacation_request");
-            graph.ExecuteEvent("approved", "true");
-            graph.ExecuteEvent("review_request");
-            graph.ExecuteEvent("submit_to_hr");
+            graph.ExecuteEvent("application:full_name", "Jim Bean");
+            graph.ExecuteEvent("application:email_addr", "jimbean@test.test");
+            graph.ExecuteEvent("application:phone_number", "1234567890");
+            graph.ExecuteEvent("application:dob", "1990-01-01");
+            graph.ExecuteEvent("application:personal_info");
+            graph.ExecuteEvent("application:resume", "resume.pdf");
+            graph.ExecuteEvent("application:upload_doc");
+            graph.ExecuteEvent("application:position", "4");
+            graph.ExecuteEvent("application:avail_start_date", "2023-10-01");
+            graph.ExecuteEvent("application:applic_details");
+            graph.ExecuteEvent("application:A16");
+            graph.ExecuteEvent("application:A15");
+            graph.ExecuteEvent("rev_applic", "2");
+            graph.ExecuteEvent("rev_applic", "2");
 
-            
+            // graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
+            // graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
+            // graph.ExecuteEvent("reason", "Tired");
+            // graph.ExecuteEvent("vacation_request");
+            // graph.ExecuteEvent("approved", "true");
+            // graph.ExecuteEvent("employee_name", "Jim Bean");
+            // graph.ExecuteEvent("employee_email", "jim@bean.org");
+            // graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
+            // graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
+            // graph.ExecuteEvent("reason", "Tired");
+            // graph.ExecuteEvent("vacation_request");
+            // graph.ExecuteEvent("approved", "true");
+            // graph.ExecuteEvent("review_request");
+            // graph.ExecuteEvent("submit_to_hr");
+
             execute.Stop();
             executedCount += 9;
             loop++;

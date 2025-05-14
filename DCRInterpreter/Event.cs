@@ -3,6 +3,8 @@ using System;
 public class Event
 {
     public string Id { get; set; }
+    public int? InstanceId { get; set; } // Unique per spawn
+    public bool IsTemplateEvent => InstanceId != null;
     public bool Executed { get; set; }
     public bool Included { get; set; }
     public bool Pending { get; set; }
@@ -15,6 +17,7 @@ public class Event
     public Func<DCRGraph,string?, List<string>> CompiledLogic { get; set; } = null!;
     public List<Event> Children { get; set; } = new();
     public Event? Parent { get; set; }
+    public DCRGraph? Template { get; set; }
     public Event(string id)
     {
         Id = id;
@@ -36,5 +39,6 @@ public class Event
 public enum EventType
 {
     Task,
-    Form
+    Form,
+    Template
 }

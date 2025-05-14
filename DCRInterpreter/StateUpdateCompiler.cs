@@ -159,6 +159,14 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
 
                             break;
+                        case RelationshipType.Spawn:
+                            // Add to spawned instances
+                            il.Emit(OpCodes.Ldarg_0); 
+                            il.Emit(OpCodes.Ldstr, relation.TargetId);
+                            il.Emit(OpCodes.Call, typeof(DCRGraph)
+                                .GetMethod("AddSpawnedInstance"));
+                            break;
+
                     }
                     il.MarkLabel(continueLabel);
                 }
