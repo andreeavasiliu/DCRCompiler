@@ -117,7 +117,7 @@ class Program
             graph.ExecuteEvent("application:A16");
             graph.ExecuteEvent("application:A15");
             graph.ExecuteEvent("rev_applic", "2");
-            graph.ExecuteEvent("rev_applic", "2");
+            graph.ExecuteEvent("A3", "12/25/2015 10:30:00 AM");
 
             // graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
             // graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());

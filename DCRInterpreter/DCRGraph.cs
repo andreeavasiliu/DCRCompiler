@@ -1,4 +1,6 @@
-﻿public class DCRGraph
+﻿using System.Text.Json.Nodes;
+
+public class DCRGraph
 {
     public string Id { get; set; } = "0";
     public string Title { get; set; }
@@ -125,6 +127,23 @@
         // Execute precompiled logic using DynamicMethod
         return e.CompiledLogic(this, data);
     }
+
+    public void AddSpawnWithData(string templateId, Dictionary<string, object?> data)
+    {
+        AddSpawnedInstance(templateId);
+        var instanceId = SpawnedInstances.Count - 1;
+        if( data == null || data.Count == 0)
+            return;
+        foreach (var e in data.Keys)
+        {
+            var eventId = $"{templateId}:{instanceId}:{e}";
+            if (!Events.ContainsKey(eventId))
+                throw new ArgumentException($"Event {eventId} not found.");
+            Events[eventId].Data = data[e];
+        }
+
+    }
+
     public void AddSpawnedInstance(string templateId)
     {
         var instanceId = SpawnedInstances.Count;
@@ -180,8 +199,9 @@ public class Relationship
     public RelationshipType Type { get; private set; }
     public string? GuardExpressionId => GuardExpression?.Id;
     public DcrExpression? GuardExpression { get; set; }
+    public string? SpawnData { get; set; } // Data to be passed to the spawned event
 
-    public Relationship( string source, string target, RelationshipType relationshipType)
+    public Relationship(string source, string target, RelationshipType relationshipType)
     {
         SourceId = source;
         TargetId = target;

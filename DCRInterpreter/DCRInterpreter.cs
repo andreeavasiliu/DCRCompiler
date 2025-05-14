@@ -100,10 +100,15 @@ public class DCRInterpreter
 
                 if (!string.IsNullOrEmpty(sourceId) && !string.IsNullOrEmpty(targetId))
                 {
+                   
                     Relationship relationship = new Relationship(sourceId, targetId, type)
                     {
                         GuardExpression = graph.Expressions.FirstOrDefault(k => k.Key == guardId).Value
                     };
+                    if(type == RelationshipType.Spawn)
+                    {
+                       relationship.SpawnData = relationshipElement.Attribute("data")?.Value;
+                    }
                     graph.Relationships.Add(relationship);
                 }
             }

@@ -160,11 +160,18 @@ public class StateUpdateCompiler
 
                             break;
                         case RelationshipType.Spawn:
-                            // Add to spawned instances
-                            il.Emit(OpCodes.Ldarg_0); 
-                            il.Emit(OpCodes.Ldstr, relation.TargetId);
-                            il.Emit(OpCodes.Call, typeof(DCRGraph)
-                                .GetMethod("AddSpawnedInstance"));
+                            targets.Add(relation.TargetId);
+                            il.Emit(OpCodes.Ldarg_0); // DCRGraph
+                            il.Emit(OpCodes.Ldstr, relation.TargetId); // template ID
+                            if (relation.SpawnData == null)
+                            {
+                                il.Emit(OpCodes.Ldnull); // null
+                            }
+                            else
+                                il.Emit(OpCodes.Ldstr, relation.SpawnData ); // JSON
+                            il.Emit(OpCodes.Ldc_I4_6); // max concurrency (e.g., 6)
+                            il.Emit(OpCodes.Call, typeof(SpawnHelper).GetMethod("SpawnEach"));
+
                             break;
 
                     }

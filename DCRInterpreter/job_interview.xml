@@ -1242,6 +1242,7 @@
             <spawns/>
             <templateSpawns>
                 <templateSpawn sourceId="rev_applic" targetId="add_doc" filterLevel="1" description="" time="" groups="" expressionId="15" spawnType="instance"/>
+                <templateSpawn sourceId="A3" targetId="add_doc" filterLevel="1" description="" time="" groups="" expressionId="15" spawnType="instance" data="[ { &quot;type&quot;: &quot;Cover letter&quot;, &quot;file&quot; :&quot;cover.pdf&quot; }, {&quot;type&quot;: &quot;Diploma&quot;, &quot;file&quot; :&quot;diploma.pdf&quot; }]"/>
             </templateSpawns>
             <updates>
                 <update sourceId="A8" targetId="A9" filterLevel="1" description="" time="" groups=""/>
