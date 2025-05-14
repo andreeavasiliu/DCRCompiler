@@ -14,6 +14,9 @@ public class Event
     public bool Included { get; set; } = false;
     [Key(663)]
     public bool Pending { get; set; } = false;
+    public int? InstanceId { get; set; } // Unique per spawn
+    public bool IsTemplateEvent => InstanceId != null;
+
     [Key(664)]
     public string? Label { get; set; }
     [Key(665)]
@@ -35,6 +38,7 @@ public class Event
     [IgnoreMember]
     public Func<DCRGraph, string?, List<string>> CompiledLogic { get; set; } = null!;
 
+    public DCRGraph? Template { get; set; }
     public Event(string id)
     {
         Id = id;
@@ -55,6 +59,7 @@ public class Event
 public enum EventType
 {
     Task,
-    Form
+    Form,
+    Template
 }
 

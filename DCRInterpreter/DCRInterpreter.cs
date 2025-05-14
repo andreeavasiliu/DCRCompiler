@@ -15,9 +15,11 @@ public class DCRInterpreter
     {
         // Initialize a new DCRGraph instance with a title (can be extracted from XML if available)
         string title = doc.Root?.Attribute("title")?.Value ?? "Untitled DCR Graph";
-        string guid = doc.Element("dcrgraph")!.Element("meta")!.Element("graph")!.Attribute("id")?.Value!;
+        string? guid = doc.Element("dcrgraph")!.Element("meta")?.Element("graph")?.Attribute("id")?.Value;
         DCRGraph graph = new DCRGraph(title);
-        graph.Id = guid;
+        // If we don't have a guid, we're possibliy inside a template
+        // and we need to generate a new one
+        graph.Id = guid ?? Guid.NewGuid().ToString();
 
         // Parse events from <event> elements
         void ParseEvent(XElement eventElement, Event? parentEvent = null)
@@ -29,7 +31,8 @@ public class DCRInterpreter
                 {
                     Type = (eventElement.Attribute("type")?.Value) switch
                     {
-                        "nesting" or "subprocess" or "form" or "template" => EventType.Form,
+                        "nesting" or "subprocess" or "form" => EventType.Form,
+                        "template" => EventType.Template,
                         _ => EventType.Task
                     },
                     Data = eventElement.Element("data")?.Value.EscapeGremlinString(),
@@ -40,6 +43,17 @@ public class DCRInterpreter
                 };
 
                 graph.Events.Add(id, newEvent);
+                if (newEvent.Type == EventType.Template) // Add "Template" to your EventType enum
+                {
+                    var nestedGraphElement = eventElement.Element("template")?.Element("dcrgraph");
+                    if (nestedGraphElement != null)
+                    {
+                        // Recursively parse the nested graph
+                        var nestedDoc = new XDocument(nestedGraphElement);
+                        var nestedGraph = ParseDCRGraphFromXml(nestedDoc);
+                        newEvent.Template = nestedGraph; // Add Template property to Event class
+                    }
+                }
 
                 // Add this event as a child of its parent, if applicable
                 if (parentEvent != null)
@@ -86,10 +100,15 @@ public class DCRInterpreter
 
                 if (!string.IsNullOrEmpty(sourceId) && !string.IsNullOrEmpty(targetId))
                 {
+                   
                     Relationship relationship = new Relationship(sourceId, targetId, type)
                     {
                         GuardExpression = graph.Expressions.FirstOrDefault(k => k.Key == guardId).Value
                     };
+                    if(type == RelationshipType.Spawn)
+                    {
+                       relationship.SpawnData = relationshipElement.Attribute("data")?.Value;
+                    }
                     graph.Relationships.Add(relationship);
                 }
             }
@@ -152,6 +171,8 @@ public class DCRInterpreter
         ParseRelationships("exclusion", RelationshipType.Exclude);
         ParseRelationships("milestone", RelationshipType.Milestone);
         ParseRelationships("update", RelationshipType.Update);
+        ParseRelationships("templateSpawn", RelationshipType.Spawn);
+
         ParseLabels();
         SetDefaults();
 
