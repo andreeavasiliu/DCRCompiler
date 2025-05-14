@@ -1,27 +1,46 @@
+using MessagePack;
+using MessagePack.Formatters;
 using System;
 
+[MessagePackObject]
+[MessagePackFormatter(typeof(Program.EventFormatter))] // explicitly bind
 public class Event
 {
+    [Key(660)]
     public string Id { get; set; }
-    public bool Executed { get; set; }
-    public bool Included { get; set; }
-    public bool Pending { get; set; }
+    [Key(661)]
+    public bool Executed { get; set; } = false;
+    [Key(662)]
+    public bool Included { get; set; } = false;
+    [Key(663)]
+    public bool Pending { get; set; } = false;
+    [Key(664)]
     public string? Label { get; set; }
+    [Key(665)]
     public string? Description { get; set; }
+    [Key(666)]
     public EventType Type { get; set; } = EventType.Task;
+    [Key(667)]
     public object? Data { get; set; }
+    [Key(668)]
     public List<string> Roles { get; set; } = new();
+    [Key(669)]
     public List<string> ReadRoles { get; set; } = new();
-    public Func<DCRGraph,string?, List<string>> CompiledLogic { get; set; } = null!;
+    [Key(670)]
+    public List<string> kIds { get; set; } = new();
+    [IgnoreMember]
     public List<Event> Children { get; set; } = new();
+    [IgnoreMember]
     public Event? Parent { get; set; }
+    [IgnoreMember]
+    public Func<DCRGraph, string?, List<string>> CompiledLogic { get; set; } = null!;
+
     public Event(string id)
     {
         Id = id;
-        Executed = false;
-        Included = false;
-        Pending = false;
     }
+    
+
 
     public bool IsRobot()
     {
@@ -38,3 +57,4 @@ public enum EventType
     Task,
     Form
 }
+

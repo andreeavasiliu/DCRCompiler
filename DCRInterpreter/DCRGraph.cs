@@ -1,24 +1,40 @@
-﻿public class DCRGraph
+﻿using MessagePack;
+
+[MessagePackObject]
+public class DCRGraph
 {
+    [Key(0)]
     public string Id { get; set; } = "0";
+    [Key(1)]
     public string Title { get; set; }
-
+    [Key(2)]
     public List<Relationship> Relationships { get; set; } = new();
-
+    [Key(3)]
     public Dictionary<string, Event> Events { get; set; } = new();
-    
-    public HashSet<string> IncludedEvents => Events.Values.Where(e => e.Included).Select(e => e.Id).ToHashSet(); // I'm not manually updating this in IL
-    public HashSet<string> PendingEvents => Events.Values.Where(e => e.Pending).Select(e => e.Id).ToHashSet();
-    public HashSet<string> ExecutedEvents => Events.Values.Where(e=>e.Executed).Select(e=>e.Id).ToHashSet();
 
+    [IgnoreMember]
+    public HashSet<string> IncludedEvents => Events.Values.Where(e => e.Included).Select(e => e.Id).ToHashSet(); // I'm not manually updating this in IL
+    [IgnoreMember]
+    public HashSet<string> PendingEvents => Events.Values.Where(e => e.Pending).Select(e => e.Id).ToHashSet();
+    [IgnoreMember]
+    public HashSet<string> ExecutedEvents => Events.Values.Where(e=>e.Executed).Select(e=>e.Id).ToHashSet();
+    [IgnoreMember]
     private StateUpdateCompiler UpdateCompiler = null!;
+    [IgnoreMember]
     public IEnumerable<Event> Robots => Events.Where(e => e.Value.Included && e.Value.Pending && e.Value.IsRobot()).Select(e => e.Value);
+    [IgnoreMember]
     public IEnumerable<Relationship> Conditions => Relationships.Where(r => r.Type is RelationshipType.Condition);
+    [IgnoreMember]
     public IEnumerable<Relationship> Responses => Relationships.Where(r => r.Type is RelationshipType.Response);
+    [IgnoreMember]
     public IEnumerable<Relationship> Inclusions => Relationships.Where(r => r.Type is RelationshipType.Include);
+    [IgnoreMember]
     public IEnumerable<Relationship> Exclusions => Relationships.Where(r => r.Type is RelationshipType.Exclude);
+    [IgnoreMember]
     public IEnumerable<Relationship> Milestones => Relationships.Where(r => r.Type is RelationshipType.Milestone);
+    [Key(4)]
     public Dictionary<string, DcrExpression> Expressions { get; set; } = new Dictionary<string, DcrExpression>();
+    [IgnoreMember]
     public Dictionary<string, object?> Values {
         get
         {
@@ -45,7 +61,6 @@
         this.Events = new(other.Events);
         Initialize();
     }
-
     public void Initialize()
     {
         UpdateCompiler = new StateUpdateCompiler(this);
@@ -135,13 +150,18 @@
         return e.CompiledLogic(this, data);
     }
 }
-
+[MessagePackObject]
 public class Relationship
 {
-    public string SourceId { get; private set; }
-    public string TargetId { get; private set; }
-    public RelationshipType Type { get; private set; }
+    [Key(0)]
+    public string SourceId { get; set; }
+    [Key(1)]
+    public string TargetId { get; set; }
+    [Key(2)]
+    public RelationshipType Type { get;  set; }
+    [IgnoreMember]
     public string? GuardExpressionId => GuardExpression?.Id;
+    [Key(3)]
     public DcrExpression? GuardExpression { get; set; }
 
     public Relationship( string source, string target, RelationshipType relationshipType)
@@ -151,9 +171,12 @@ public class Relationship
         Type = relationshipType;
     }
 }
+[MessagePackObject]
 public class DcrExpression
 {
+    [Key(0)]
     public string Id { get; set; } // Unique identifier for the expression
+    [Key(1)]
     public string Value { get; set; } // The actual expression (e.g., "count(global) > 1")
 
     public bool Evaluate(DCRGraph graph)
