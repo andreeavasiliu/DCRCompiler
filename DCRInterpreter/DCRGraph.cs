@@ -11,13 +11,17 @@ public class DCRGraph
     public List<Relationship> Relationships { get; set; } = new();
     [Key(3)]
     public Dictionary<string, Event> Events { get; set; } = new();
+    [Key(4)]
+    public Dictionary<string, DcrExpression> Expressions { get; set; } = new Dictionary<string, DcrExpression>();
+    [Key(5)]
+    public Dictionary<int, List<string>> SpawnedInstances { get; set; } = new(); // InstanceID -> [EventIDs]
 
     [IgnoreMember]
     public HashSet<string> IncludedEvents => Events.Values.Where(e => e.Included).Select(e => e.Id).ToHashSet(); // I'm not manually updating this in IL
     [IgnoreMember]
     public HashSet<string> PendingEvents => Events.Values.Where(e => e.Pending).Select(e => e.Id).ToHashSet();
     [IgnoreMember]
-    public HashSet<string> ExecutedEvents => Events.Values.Where(e=>e.Executed).Select(e=>e.Id).ToHashSet();
+    public HashSet<string> ExecutedEvents => Events.Values.Where(e => e.Executed).Select(e => e.Id).ToHashSet();
     [IgnoreMember]
     private StateUpdateCompiler UpdateCompiler = null!;
     [IgnoreMember]
@@ -32,17 +36,16 @@ public class DCRGraph
     public IEnumerable<Relationship> Exclusions => Relationships.Where(r => r.Type is RelationshipType.Exclude);
     [IgnoreMember]
     public IEnumerable<Relationship> Milestones => Relationships.Where(r => r.Type is RelationshipType.Milestone);
+    [IgnoreMember]
     public IEnumerable<Relationship> Updates => Relationships.Where(r => r.Type is RelationshipType.Update);
+    [IgnoreMember]
     public IEnumerable<Relationship> Spawns => Relationships.Where(r => r.Type is RelationshipType.Spawn);
-    [Key(4)]
-    public Dictionary<string, DcrExpression> Expressions { get; set; } = new Dictionary<string, DcrExpression>();
+    [IgnoreMember]
     public Dictionary<string, DCRGraph> Templates => Events.Where(e => e.Value.Template != null)
         .ToDictionary(e => e.Key, e => e.Value.Template!);
-    public Dictionary<int, List<string>> SpawnedInstances { get; set; } = new(); // InstanceID -> [EventIDs]
+    [IgnoreMember]
     public Dictionary<string, object?> Values
     {
-    [IgnoreMember]
-    public Dictionary<string, object?> Values {
         get
         {
             var values = new Dictionary<string, object?>();
@@ -53,7 +56,6 @@ public class DCRGraph
             return values;
         }
     }
-
     public DCRGraph(string title)
     {
         this.Title = title;
@@ -146,7 +148,7 @@ public class DCRGraph
     {
         AddSpawnedInstance(templateId);
         var instanceId = SpawnedInstances.Count - 1;
-        if( data == null || data.Count == 0)
+        if (data == null || data.Count == 0)
             return;
         foreach (var e in data.Keys)
         {
@@ -206,6 +208,7 @@ public class DCRGraph
 
 }
 
+[MessagePackObject]
 public class Relationship
 {
     [Key(0)]
@@ -213,11 +216,12 @@ public class Relationship
     [Key(1)]
     public string TargetId { get; set; }
     [Key(2)]
-    public RelationshipType Type { get;  set; }
+    public RelationshipType Type { get; set; }
     [IgnoreMember]
     public string? GuardExpressionId => GuardExpression?.Id;
     [Key(3)]
     public DcrExpression? GuardExpression { get; set; }
+    [Key(4)]
     public string? SpawnData { get; set; } // Data to be passed to the spawned event
 
     public Relationship(string source, string target, RelationshipType relationshipType)

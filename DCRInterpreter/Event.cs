@@ -14,7 +14,9 @@ public class Event
     public bool Included { get; set; } = false;
     [Key(663)]
     public bool Pending { get; set; } = false;
+    [IgnoreMember]
     public int? InstanceId { get; set; } // Unique per spawn
+    [IgnoreMember]
     public bool IsTemplateEvent => InstanceId != null;
 
     [Key(664)]
@@ -37,15 +39,13 @@ public class Event
     public Event? Parent { get; set; }
     [IgnoreMember]
     public Func<DCRGraph, string?, List<string>> CompiledLogic { get; set; } = null!;
-
+    [Key(671)]
     public DCRGraph? Template { get; set; }
     public Event(string id)
     {
         Id = id;
     }
     
-
-
     public bool IsRobot()
     {
         if (this.Roles.Any(role => role.ToLower().Equals("robot")))
