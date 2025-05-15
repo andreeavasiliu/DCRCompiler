@@ -10,33 +10,31 @@ public static class SpawnHelper
         {
             spawnData = graph.Values[spawnData]?.ToString() ?? throw new ArgumentException($"Value for {spawnData} not found");
         }
-        var entries = JsonConvert.DeserializeObject<List<Dictionary<string, object?>>>(spawnData)
-            ?? throw new ArgumentException("Invalid spawn data JSON");
+        var entries = ParseSpawnData(spawnData);
+        
+        // Generate all instance IDs upfront
+        var instanceIds = Enumerable.Range(0, entries.Count)
+            .Select(_ => graph.GetNextInstanceId())
+            .ToList();
 
-        var semaphore = new SemaphoreSlim(maxConcurrency);
-        var tasks = new List<Task>();
+        var tasks = entries.Zip(instanceIds).Select(pair => 
+            ProcessSpawnEntry(graph, templateId, pair.First, pair.Second)
+    );
 
-        foreach (var entry in entries)
-        {
-            await semaphore.WaitAsync();
-
-            var task = Task.Run(() =>
-            {
-                try
-                {
-                    graph.AddSpawnWithData(templateId, entry);
-                }
-                finally
-                {
-                    semaphore.Release();
-                }
-            });
-
-            tasks.Add(task);
-        }
-
-        await Task.WhenAll(tasks);
+    await Task.WhenAll(tasks);
     }
+    private static async Task ProcessSpawnEntry(DCRGraph graph, string templateId, 
+    Dictionary<string, object?> data, int instanceId)
+{
+    await Task.Run(() => 
+    {
+        lock (graph.SpawnLock) // Add lock object to DCRGraph
+        {
+            graph.AddSpawnedInstance(templateId, instanceId);
+            graph.ApplySpawnData(templateId, instanceId, data);
+        }
+    });
+}
     public static void SpawnEach(DCRGraph graph, string templateId, string? spawnData, int maxConcurrency = 6)
     {
         if (spawnData == null)
@@ -44,7 +42,9 @@ public static class SpawnHelper
             graph.AddSpawnWithData(templateId, new Dictionary<string, object?>());
         }
         else
+        {
             SpawnEachAsync(graph, templateId, spawnData, maxConcurrency).GetAwaiter().GetResult();
+        }
     }
 
 
