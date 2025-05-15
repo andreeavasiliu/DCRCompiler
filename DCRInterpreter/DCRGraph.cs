@@ -1,13 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using MessagePack;
+﻿using MessagePack;
 
 [MessagePackObject]
 public class DCRGraph
 {
+    
     [Key(0)]
-    public string Id { get; set; } = "0";
-    [Key(1)]
     public string Title { get; set; }
+    [Key(1)]
+    public string Id { get; set; } = "0";
     [Key(2)]
     public List<Relationship> Relationships { get; set; } = new();
     [Key(3)]
