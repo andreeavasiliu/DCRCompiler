@@ -3,7 +3,7 @@ using MessagePack.Formatters;
 using System;
 
 [MessagePackObject]
-[MessagePackFormatter(typeof(Program.EventFormatter))] // explicitly bind
+[MessagePackFormatter(typeof(DCRFastInterpreter.EventFormatter))] // explicitly bind
 public class Event
 {
     [Key(660)]

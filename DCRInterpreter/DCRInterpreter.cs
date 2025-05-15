@@ -1,3 +1,6 @@
+using MessagePack;
+using MessagePack.Formatters;
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Xml.Linq;
 using System.Xml.XPath;
@@ -203,4 +206,126 @@ public class DCRInterpreter
         return graph;
     }
 
+}
+
+public class DCRFastInterpreter
+{
+    static MessagePackSerializerOptions options = MessagePackSerializerOptions.Standard.WithResolver(CustomResolver.Instance);
+    public class EventFormatter : IMessagePackFormatter<Event?> // Must be explicitly bind
+    {
+        public void Serialize(ref MessagePackWriter writer, Event? value, MessagePackSerializerOptions options)
+        {
+            // TODO: Consider handling null values gracefully (writer.WriteNil())
+            if (value == null)
+            {
+                writer.WriteNil();
+                return;
+            }
+            // Write an array header to store the values in order
+            writer.WriteArrayHeader(10);  // We have 10 fields to serialize
+
+            // Serialize the fields: Id, Executed, Included, Pending, Label, Description, etc.
+            writer.Write(value.Id);
+            writer.Write(value.Executed);
+            writer.Write(value.Included);
+            writer.Write(value.Pending);
+            writer.Write(value.Label);
+            writer.Write(value.Description);
+            writer.Write((int)value.Type); // Serialize enum as integer
+            options.Resolver.GetFormatterWithVerify<object?>().Serialize(ref writer, value.Data, options);
+            options.Resolver.GetFormatterWithVerify<List<string>>().Serialize(ref writer, value.Roles, options);
+            options.Resolver.GetFormatterWithVerify<List<string>>().Serialize(ref writer, value.ReadRoles, options);
+            var kids = value.Children.Select(x => x.Id).ToList();
+            options.Resolver.GetFormatterWithVerify<List<string>>().Serialize(ref writer, kids, options);
+            options.Resolver.GetFormatterWithVerify<DCRGraph?>().Serialize(ref writer, value.Template, options);
+        }
+
+        public Event? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
+        {
+            options.Security.DepthStep(ref reader);
+            if (reader.IsNil)
+            {
+                return null;
+            }
+            reader.ReadArrayHeader(); // Read the array header
+
+            // Read the fields in the correct order as serialized
+            var id = reader.ReadString();
+            var executed = reader.ReadBoolean();
+            var included = reader.ReadBoolean();
+            var pending = reader.ReadBoolean();
+            var label = reader.ReadString();
+            var description = reader.ReadString();
+            var eventType = (EventType)reader.ReadInt32();
+            var data = options.Resolver.GetFormatterWithVerify<object?>().Deserialize(ref reader, options);
+            var roles = options.Resolver.GetFormatterWithVerify<List<string>>().Deserialize(ref reader, options);
+            var readRoles = options.Resolver.GetFormatterWithVerify<List<string>>().Deserialize(ref reader, options);
+            var kIds = options.Resolver.GetFormatterWithVerify<List<string>>().Deserialize(ref reader, options);
+            var template = options.Resolver.GetFormatterWithVerify<DCRGraph?>().Deserialize(ref reader, options);
+
+            // Create the Event object
+            var ev = new Event(id!)
+            {
+                Executed = executed,
+                Included = included,
+                Pending = pending,
+                Label = label,
+                Description = description,
+                Type = eventType,
+                Data = data,
+                Roles = roles,
+                ReadRoles = readRoles,
+                kIds = kIds,
+                Template = template
+            };
+
+            return ev;
+        }
+    }
+
+    public class CustomResolver : IFormatterResolver
+    {
+        public static readonly CustomResolver Instance = new();
+
+        private static readonly IMessagePackFormatter<Event?> eventFormatter = new EventFormatter();
+
+        private static readonly IFormatterResolver fallbackResolver =
+            MessagePack.Resolvers.CompositeResolver.Create(
+                // Register your formatter here only once
+                new IMessagePackFormatter[] { eventFormatter },
+
+                // Then use standard for the rest
+                new IFormatterResolver[] { MessagePack.Resolvers.StandardResolver.Instance }
+            );
+
+        public IMessagePackFormatter<T>? GetFormatter<T>()
+        {
+            // Just delegate. No manual checks.
+            return fallbackResolver.GetFormatter<T>();
+        }
+    }
+
+    public static DCRGraph RemakeTree(DCRGraph grph)
+    {
+        foreach (var evt in grph.Events)
+        {
+            foreach (var kid in evt.Value.kIds)
+            {
+                evt.Value.Children.Add(grph.Events[kid]);
+                grph.Events[kid].Parent = evt.Value;
+            }
+        }
+        return grph;
+    }
+
+    public static byte[] Serialize(DCRGraph grph)
+    {
+        return MessagePackSerializer.Serialize<DCRGraph>(grph, options);
+    }
+
+    public static DCRGraph Deserialize(byte[] data)
+    {
+        var graph = MessagePackSerializer.Deserialize<DCRGraph>(data, options);
+        return RemakeTree(graph);
+    }
 }
