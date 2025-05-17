@@ -290,10 +290,10 @@ public class DCRFastInterpreter
         private static readonly IFormatterResolver fallbackResolver =
             MessagePack.Resolvers.CompositeResolver.Create(
                 // Register your formatter here only once
-                new IMessagePackFormatter[] { eventFormatter },
+                [eventFormatter],
 
                 // Then use standard for the rest
-                new IFormatterResolver[] { MessagePack.Resolvers.StandardResolver.Instance }
+                [MessagePack.Resolvers.StandardResolver.Instance]
             );
 
         public IMessagePackFormatter<T>? GetFormatter<T>()
