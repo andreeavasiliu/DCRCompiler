@@ -181,21 +181,7 @@ public class DCRGraph
                 throw new ArgumentException($"Event {eventId} not found.");
             }
 
-            var updatedEvent = new Event(existingEvent.Id)
-            {
-                InstanceId = existingEvent.InstanceId,
-                Label = existingEvent.Label,
-                Description = existingEvent.Description,
-                Type = existingEvent.Type,
-                Data = data[key],
-                Roles = existingEvent.Roles.ToList(),
-                ReadRoles = existingEvent.ReadRoles.ToList(),
-                Included = existingEvent.Included,
-                Pending = existingEvent.Pending,
-                Executed = existingEvent.Executed,
-                Children = existingEvent.Children.ToList(),
-                Parent = existingEvent.Parent
-            };
+            var updatedEvent = existingEvent.CloneWithId(eventId, instanceId, data[key]);
 
             Events[eventId] = updatedEvent; // Thread-safe if Events is a ConcurrentDictionary
         });
