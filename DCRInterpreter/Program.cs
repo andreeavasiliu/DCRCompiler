@@ -7,8 +7,9 @@ class Program
 
     static void Main(string[] args)
     {
-        string xmlFilePath = "job_interview.xml";
-        string xmlFilePath2 = "DCR-interpreter.xml";
+        string xmlFilePath = "spawn_bench.xml";
+        //string xmlFilePath = "job_interview.xml";
+        //string xmlFilePath2 = "DCR-interpreter.xml";
         //string xmlFilePath = "the_ultimate_test.xml";
 
         if (!File.Exists(xmlFilePath))
@@ -55,20 +56,22 @@ class Program
 
             execute.Start();
 
-            graph.ExecuteEvent("application:full_name", "Jim Bean");
-            graph.ExecuteEvent("application:email_addr", "jimbean@test.test");
-            graph.ExecuteEvent("application:phone_number", "1234567890");
-            graph.ExecuteEvent("application:dob", "1990-01-01");
-            graph.ExecuteEvent("application:personal_info");
-            graph.ExecuteEvent("application:resume", "resume.pdf");
-            graph.ExecuteEvent("application:upload_doc");
-            graph.ExecuteEvent("application:position", "4");
-            graph.ExecuteEvent("application:avail_start_date", "2023-10-01");
-            graph.ExecuteEvent("application:applic_details");
-            graph.ExecuteEvent("application:A16");
-            graph.ExecuteEvent("application:A15");
-            graph.ExecuteEvent("rev_applic", "2");
-            graph.ExecuteEvent("A3", "12/25/2015 10:30:00 AM");
+            graph.ExecuteEvent("listspawn");
+
+            // graph.ExecuteEvent("application:full_name", "Jim Bean");
+            // graph.ExecuteEvent("application:email_addr", "jimbean@test.test");
+            // graph.ExecuteEvent("application:phone_number", "1234567890");
+            // graph.ExecuteEvent("application:dob", "1990-01-01");
+            // graph.ExecuteEvent("application:personal_info");
+            // graph.ExecuteEvent("application:resume", "resume.pdf");
+            // graph.ExecuteEvent("application:upload_doc");
+            // graph.ExecuteEvent("application:position", "4");
+            // graph.ExecuteEvent("application:avail_start_date", "2023-10-01");
+            // graph.ExecuteEvent("application:applic_details");
+            // graph.ExecuteEvent("application:A16");
+            // graph.ExecuteEvent("application:A15");
+            // graph.ExecuteEvent("rev_applic", "2");
+            // graph.ExecuteEvent("A3", "12/25/2015 10:30:00 AM");
 
             //graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
             //graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
@@ -135,20 +138,22 @@ class Program
 
             execute.Start();
 
-            graph.ExecuteEvent("application:full_name", "Jim Bean");
-            graph.ExecuteEvent("application:email_addr", "jimbean@test.test");
-            graph.ExecuteEvent("application:phone_number", "1234567890");
-            graph.ExecuteEvent("application:dob", "1990-01-01");
-            graph.ExecuteEvent("application:personal_info");
-            graph.ExecuteEvent("application:resume", "resume.pdf");
-            graph.ExecuteEvent("application:upload_doc");
-            graph.ExecuteEvent("application:position", "4");
-            graph.ExecuteEvent("application:avail_start_date", "2023-10-01");
-            graph.ExecuteEvent("application:applic_details");
-            graph.ExecuteEvent("application:A16");
-            graph.ExecuteEvent("application:A15");
-            graph.ExecuteEvent("rev_applic", "2");
-            graph.ExecuteEvent("A3", "12/25/2015 10:30:00 AM");
+            graph.ExecuteEvent("listspawn");
+
+            // graph.ExecuteEvent("application:full_name", "Jim Bean");
+            // graph.ExecuteEvent("application:email_addr", "jimbean@test.test");
+            // graph.ExecuteEvent("application:phone_number", "1234567890");
+            // graph.ExecuteEvent("application:dob", "1990-01-01");
+            // graph.ExecuteEvent("application:personal_info");
+            // graph.ExecuteEvent("application:resume", "resume.pdf");
+            // graph.ExecuteEvent("application:upload_doc");
+            // graph.ExecuteEvent("application:position", "4");
+            // graph.ExecuteEvent("application:avail_start_date", "2023-10-01");
+            // graph.ExecuteEvent("application:applic_details");
+            // graph.ExecuteEvent("application:A16");
+            // graph.ExecuteEvent("application:A15");
+            // graph.ExecuteEvent("rev_applic", "2");
+            // graph.ExecuteEvent("A3", "12/25/2015 10:30:00 AM");
 
             //graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
             //graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());

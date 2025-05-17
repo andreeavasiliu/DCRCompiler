@@ -176,8 +176,11 @@ public class DCRGraph
             {
                 if (!Events.ContainsKey(eventId))
                 {
-                    // Optionally create missing events instead of throwing
-                    throw new ArgumentException($"Event {eventId} not found. Ensure template events are registered first.");
+                    if (Templates[templateId].Events.ContainsKey(key))
+                        // Optionally create missing events instead of throwing
+                        throw new ArgumentException($"Event {eventId} not found. Ensure template events are registered first.");
+                    else
+                        continue;
                 }
 
                 // Clone to maintain immutability
