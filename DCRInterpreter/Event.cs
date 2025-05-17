@@ -45,6 +45,25 @@ public class Event
     {
         Id = id;
     }
+    public Event CloneWithId(string newId, int instanceId, object? newData = null)
+    {
+        return new Event(newId)
+        {
+            InstanceId = instanceId,
+            Label = this.Label,
+            Description = this.Description,
+            Type = this.Type,
+            Data = newData ?? this.Data,
+            Roles = this.Roles.ToList(),
+            ReadRoles = this.ReadRoles.ToList(),
+            Included = this.Included,
+            Pending = this.Pending,
+            Executed = this.Executed,
+            Children = this.Children.ToList(),
+            Parent = this.Parent
+        };
+    }
+
     
     public bool IsRobot()
     {

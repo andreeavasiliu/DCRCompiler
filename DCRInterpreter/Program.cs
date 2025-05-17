@@ -87,11 +87,10 @@ class Program
             //graph.ExecuteEvent("approved", "true");
             //graph.ExecuteEvent("review_request");
             //graph.ExecuteEvent("submit_to_hr");
-
             execute.Stop();
             loop++;
         }
-        Measure(ConsoleColor.Cyan, "Iterpreter w/ Binary Parsing", execute.Elapsed, parse.Elapsed, loop, 9);
+        Measure(ConsoleColor.Cyan, "Iterpreter w/ Binary Parsing", execute.Elapsed, parse.Elapsed, loop, 1);
     }
 
     static void BenchRuntime(Runtime runtime, XDocument original, int maxtime)
@@ -137,8 +136,12 @@ class Program
             parse.Stop();
 
             execute.Start();
-
+            var init = graph.Events.Count();
             graph.ExecuteEvent("listspawn");
+            var spanwTotal =  graph.Events.Count() - init;
+
+            Console.WriteLine($"Spawned {spanwTotal} new events"); 
+            Console.WriteLine($"SpawnedInstances: {graph.SpawnedInstances.Count()}");
 
             // graph.ExecuteEvent("application:full_name", "Jim Bean");
             // graph.ExecuteEvent("application:email_addr", "jimbean@test.test");
@@ -173,7 +176,7 @@ class Program
             execute.Stop();
             loop++;
         }
-        Measure(ConsoleColor.Green, "Iterpreter", execute.Elapsed, parse.Elapsed, loop, 9);
+        Measure(ConsoleColor.Green, "Iterpreter", execute.Elapsed, parse.Elapsed, loop, 1);
     }
 
     static void Measure(ConsoleColor consoleColor, string ExecutionName, TimeSpan execution, TimeSpan parsing, int loop, int eventsperloop)

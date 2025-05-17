@@ -1,4 +1,5 @@
-﻿using MessagePack;
+﻿using System.Collections.Concurrent;
+using MessagePack;
 
 [MessagePackObject]
 public class DCRGraph
@@ -9,13 +10,13 @@ public class DCRGraph
     [Key(1)]
     public string Id { get; set; } = "0";
     [Key(2)]
-    public List<Relationship> Relationships { get; set; } = new();
+    public ConcurrentBag<Relationship> Relationships { get; set; } = new();
     [Key(3)]
-    public Dictionary<string, Event> Events { get; set; } = new();
+    public ConcurrentDictionary<string, Event> Events { get; set; } = new();
     [Key(4)]
     public Dictionary<string, DcrExpression> Expressions { get; set; } = new Dictionary<string, DcrExpression>();
     [Key(5)]
-    public Dictionary<int, List<string>> SpawnedInstances { get; set; } = new(); // InstanceID -> [EventIDs]
+    public ConcurrentDictionary<int, List<string>> SpawnedInstances { get; set; } = new(); // InstanceID -> [EventIDs]
 
     [IgnoreMember]
     public HashSet<string> IncludedEvents => Events.Values.Where(e => e.Included).Select(e => e.Id).ToHashSet(); // I'm not manually updating this in IL
@@ -156,120 +157,96 @@ public class DCRGraph
         lock (SpawnedInstances)
         {
             instanceId = _instanceIdCounter;
-            AddSpawnedInstance(templateId, instanceId); // Now uses atomic counter
+            var template = Templates[templateId];
+            AddSpawnedInstance(template, templateId, instanceId); // Now uses atomic counter
         }
 
     }
-    [IgnoreMember]
-    public object SpawnLock = new object();
     public int GetNextInstanceId() => Interlocked.Increment(ref _instanceIdCounter) - 1;
 
-    public void ApplySpawnData(string templateId, int instanceId, Dictionary<string, object?> data)
+    public void ApplySpawnData(DCRGraph template, string templateId, int instanceId, Dictionary<string, object?> data)
     {
-        if (data == null || data.Count == 0)
-            return;
+        if (data == null || data.Count == 0) return;
+
         foreach (var key in data.Keys)
         {
             var eventId = $"{templateId}:{instanceId}:{key}";
 
-            lock (Events) // Ensure thread-safe access
+            if (!Events.TryGetValue(eventId, out var existingEvent))
             {
-                if (!Events.ContainsKey(eventId))
-                {
-                    if (Templates[templateId].Events.ContainsKey(key))
-                        // Optionally create missing events instead of throwing
-                        throw new ArgumentException($"Event {eventId} not found. Ensure template events are registered first.");
-                    else
-                        continue;
-                }
-
-                // Clone to maintain immutability
-                var existingEvent = Events[eventId];
-                Events[eventId] = new Event(existingEvent.Id)
-                {
-                    InstanceId = existingEvent.InstanceId,
-                    Label = existingEvent.Label,
-                    Description = existingEvent.Description,
-                    Type = existingEvent.Type,
-                    Data = data[key],
-                    Roles = existingEvent.Roles.ToList(),
-                    ReadRoles = existingEvent.ReadRoles.ToList(),
-                    Included = existingEvent.Included,
-                    Pending = existingEvent.Pending,
-                    Executed = existingEvent.Executed,
-                    Children = existingEvent.Children.ToList(),
-                    Parent = existingEvent.Parent
-                };
+                if (!template.Events.ContainsKey(key)) continue;
+                throw new ArgumentException($"Event {eventId} not found.");
             }
+
+            var updatedEvent = new Event(existingEvent.Id)
+            {
+                InstanceId = existingEvent.InstanceId,
+                Label = existingEvent.Label,
+                Description = existingEvent.Description,
+                Type = existingEvent.Type,
+                Data = data[key],
+                Roles = existingEvent.Roles.ToList(),
+                ReadRoles = existingEvent.ReadRoles.ToList(),
+                Included = existingEvent.Included,
+                Pending = existingEvent.Pending,
+                Executed = existingEvent.Executed,
+                Children = existingEvent.Children.ToList(),
+                Parent = existingEvent.Parent
+            };
+
+            Events[eventId] = updatedEvent;
         }
     }
-    public void CompileSpawnedInstance(string templateId, int instanceId)
+
+    public void CompileSpawnedInstance(DCRGraph template, string templateId, int instanceId)
     {
-        var template = Templates[templateId];
         foreach (var e in template.Events.Values)
         {
             var newID = $"{templateId}:{instanceId}:{e.Id}";
-            if (Events.ContainsKey(newID))
+            if (Events.TryGetValue(newID, out var evt))
             {
-                Events[newID].CompiledLogic = UpdateCompiler.GenerateLogicForEvent(newID);
+                evt.CompiledLogic = UpdateCompiler.GenerateLogicForEvent(newID);
             }
         }
     }
-    public void AddSpawnedInstance(string templateId, int instanceId)
+
+    public void AddSpawnedInstance(DCRGraph template, string templateId, int instanceId)
     {
 
-        lock (SpawnedInstances)
+        var instanceEvents = new List<string>();
+
+        foreach (var e in template.Events.Values)
         {
-            SpawnedInstances[instanceId] = new List<string>();
+            var newID = $"{templateId}:{instanceId}:{e.Id}";
+            Events[newID] = e.CloneWithId(newID, instanceId);
+            instanceEvents.Add(newID);
         }
-        // Copy initial state from template
-        var template = Templates[templateId];
-        lock (Events)
+        SpawnedInstances[instanceId] = instanceEvents;
+        var eventIdMap = Events.ToDictionary(e => e.Value.Id, e => e.Key); // O(n), once
+
+
+        // Copy relationships from template
+        foreach (var r in template.Relationships)
         {
-            foreach (var e in template.Events.Values)
+            var targetEvent = eventIdMap.TryGetValue(r.TargetId, out var targetId);
+            targetId = targetEvent ? targetId : $"{templateId}:{instanceId}:{r.TargetId}";
+            var sourceEvent = eventIdMap.TryGetValue(r.SourceId, out var sourceId);
+            sourceId = sourceEvent ? sourceId : $"{templateId}:{instanceId}:{r.SourceId}";
+            var newRelationship = new Relationship(
+                targetId,
+                sourceId,
+                r.Type
+            )
             {
-                var newID = $"{templateId}:{instanceId}:{e.Id}";
-                var newEvent = new Event(newID)
-                {
-                    InstanceId = instanceId,
-                    Label = e.Label,
-                    Description = e.Description,
-                    Type = e.Type,
-                    Data = e.Data,
-                    Roles = e.Roles.ToList(),
-                    ReadRoles = e.ReadRoles.ToList(),
-                    Included = e.Included,
-                    Pending = e.Pending,
-                    Executed = e.Executed,
-                    Children = e.Children.ToList(),
-                    Parent = e.Parent
-                };
-                Events[newID] = newEvent;
-                SpawnedInstances[instanceId].Add(newID);
-            }
-        }
-        lock (Relationships)
-        {
-            // Copy relationships from template
-            foreach (var r in template.Relationships)
+                GuardExpression = r.GuardExpression
+            };
+            lock (Relationships)
             {
-                var targetEvent = Events.FirstOrDefault(e => e.Value.Id == r.TargetId);
-                var targetId = !targetEvent.Equals(default(KeyValuePair<string, Event>)) ? targetEvent.Key : $"{templateId}:{instanceId}:{r.TargetId}";
-                var sourceEvent = Events.FirstOrDefault(e => e.Value.Id == r.SourceId);
-                var sourceId = !sourceEvent.Equals(default(KeyValuePair<string, Event>)) ? sourceEvent.Key : $"{templateId}:{instanceId}:{r.SourceId}";
-                var newRelationship = new Relationship(
-                    targetId,
-                    sourceId,
-                    r.Type
-                )
-                {
-                    GuardExpression = r.GuardExpression
-                };
                 Relationships.Add(newRelationship);
             }
         }
-    }
 
+    }
 }
 
 [MessagePackObject]

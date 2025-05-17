@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Reflection.Emit;
 
@@ -24,7 +25,7 @@ public class StateUpdateCompiler
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
         il.Emit(OpCodes.Ldstr, eventId);
-        il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+        il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
         il.Emit(OpCodes.Ldarg_1);
         il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").SetMethod);
 
@@ -38,14 +39,14 @@ public class StateUpdateCompiler
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
             il.Emit(OpCodes.Ldstr, eventId);
-            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
             il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Pending = false)
             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
 
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
             il.Emit(OpCodes.Ldstr, eventId);
-            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
             il.Emit(OpCodes.Ldc_I4_1); // Load constant false (Executed = true)
             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
             foreach (var relation in Graph.Relationships)
@@ -94,7 +95,7 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
                             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
                             il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
-                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Pending = true)
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
                             break;
@@ -105,7 +106,7 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
                             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
                             il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
-                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldc_I4_1); // Load constant true (Included = true)
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Included").SetMethod);
                             break;
@@ -116,7 +117,7 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
                             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
                             il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
-                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Included = false)
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Included").SetMethod);
                             break;
@@ -128,7 +129,7 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
                             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
                             il.Emit(OpCodes.Ldstr, relation.GuardExpression.Value); // Load target ID
-                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetGetMethod());
 
                             LocalBuilder sourceData = il.DeclareLocal(typeof(object)); //works with null
@@ -137,7 +138,7 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldarg_0); // Load DCRGraph parameter
                             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
                             il.Emit(OpCodes.Ldstr, relation.TargetId); // Load target ID
-                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldloc, sourceData);
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Data").GetSetMethod());
 
@@ -146,14 +147,14 @@ public class StateUpdateCompiler
                             il.Emit(OpCodes.Ldarg_0);
                             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
                             il.Emit(OpCodes.Ldstr, relation.TargetId);
-                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldc_I4_0); // Load constant false (Pending = false)
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Pending").SetMethod);
 
                             il.Emit(OpCodes.Ldarg_0);
                             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
                             il.Emit(OpCodes.Ldstr, relation.TargetId);
-                            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+                            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
                             il.Emit(OpCodes.Ldc_I4_1); // Load constant false (Executed = true)
                             il.Emit(OpCodes.Callvirt, typeof(Event).GetProperty("Executed").SetMethod);
 
@@ -222,7 +223,7 @@ public class StateUpdateCompiler
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Callvirt, typeof(DCRGraph).GetProperty("Events").GetGetMethod());
             il.Emit(OpCodes.Ldstr, tgt); // Load target ID
-            il.Emit(OpCodes.Callvirt, typeof(Dictionary<string, Event>).GetMethod("get_Item"));
+            il.Emit(OpCodes.Callvirt, typeof(ConcurrentDictionary<string, Event>).GetMethod("get_Item"));
 
             // --- 3. Assign the delegate to the Event's CompiledLogic property ---
             // Load the delegate from the local variable.

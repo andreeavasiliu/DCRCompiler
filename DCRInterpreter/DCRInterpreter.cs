@@ -42,7 +42,8 @@ public class DCRInterpreter
                     Parent = parentEvent
                 };
 
-                graph.Events.Add(id, newEvent);
+                if (!graph.Events.TryAdd(id, newEvent))
+                    throw new InvalidOperationException($"Event with ID {id} already exists.");
                 if (newEvent.Type == EventType.Template) // Add "Template" to your EventType enum
                 {
                     var nestedGraphElement = eventElement.Element("template")?.Element("dcrgraph");

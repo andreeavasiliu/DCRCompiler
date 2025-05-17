@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 public static class SpawnHelper
 {
-    public static async Task SpawnEachAsync(DCRGraph graph, string templateId, string spawnData)
+    public static void SpawnEachA(DCRGraph graph, string templateId, string spawnData)
     {
         if (spawnData.StartsWith("$"))
         {
@@ -15,23 +15,20 @@ public static class SpawnHelper
             .Select(_ => graph.GetNextInstanceId())
             .ToList();
 
-        var tasks = entries.Zip(instanceIds).Select(pair =>
-            ProcessSpawnEntry(graph, templateId, pair.First, pair.Second)
-        );
-
-        await Task.WhenAll(tasks);
+        Parallel.ForEach(entries.Zip(instanceIds), (pair, token) =>
+        {
+            ProcessSpawnEntry(graph, templateId, pair.First, pair.Second);
+        });
     }
-    private static Task ProcessSpawnEntry(DCRGraph graph, string templateId,
+    private static void ProcessSpawnEntry(DCRGraph graph, string templateId,
     Dictionary<string, object?> data, int instanceId)
     {
+       // No Task.Run
+        DCRGraph template = graph.Templates[templateId];
+        graph.AddSpawnedInstance(template, templateId, instanceId);
+        graph.ApplySpawnData(template, templateId, instanceId, data);
+        graph.CompileSpawnedInstance(template, templateId, instanceId);
 
-        lock (graph.SpawnLock) // Add lock object to DCRGraph
-        {
-            graph.AddSpawnedInstance(templateId, instanceId);
-            graph.ApplySpawnData(templateId, instanceId, data);
-            graph.CompileSpawnedInstance(templateId, instanceId);
-        }
-        return Task.CompletedTask;
     }
     public static void SpawnEach(DCRGraph graph, string templateId, string? spawnData)
     {
@@ -41,7 +38,14 @@ public static class SpawnHelper
         }
         else
         {
-            SpawnEachAsync(graph, templateId, spawnData).GetAwaiter().GetResult();
+            try
+            {
+                SpawnEachA(graph, templateId, spawnData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in SpawnEach: {ex.Message}");
+            }
         }
     }
 
