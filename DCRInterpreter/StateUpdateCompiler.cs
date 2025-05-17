@@ -168,7 +168,6 @@ public class StateUpdateCompiler
                             }
                             else
                                 il.Emit(OpCodes.Ldstr, relation.SpawnData ); // JSON
-                            il.Emit(OpCodes.Ldc_I4_6); // max concurrency (e.g., 6)
                             il.Emit(OpCodes.Call, typeof(SpawnHelper).GetMethod("SpawnEach"));
 
                             break;

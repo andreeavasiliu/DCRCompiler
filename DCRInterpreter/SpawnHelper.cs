@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 public static class SpawnHelper
 {
-    public static async Task SpawnEachAsync(DCRGraph graph, string templateId, string spawnData, int maxConcurrency = 6)
+    public static async Task SpawnEachAsync(DCRGraph graph, string templateId, string spawnData)
     {
         if (spawnData.StartsWith("$"))
         {
@@ -21,20 +21,19 @@ public static class SpawnHelper
 
         await Task.WhenAll(tasks);
     }
-    private static async Task ProcessSpawnEntry(DCRGraph graph, string templateId,
+    private static Task ProcessSpawnEntry(DCRGraph graph, string templateId,
     Dictionary<string, object?> data, int instanceId)
     {
-        await Task.Run(() =>
+
+        lock (graph.SpawnLock) // Add lock object to DCRGraph
         {
-            lock (graph.SpawnLock) // Add lock object to DCRGraph
-            {
-                graph.AddSpawnedInstance(templateId, instanceId);
-                graph.ApplySpawnData(templateId, instanceId, data);
-                graph.CompileSpawnedInstance(templateId, instanceId);
-            }
-        });
+            graph.AddSpawnedInstance(templateId, instanceId);
+            graph.ApplySpawnData(templateId, instanceId, data);
+            graph.CompileSpawnedInstance(templateId, instanceId);
+        }
+        return Task.CompletedTask;
     }
-    public static void SpawnEach(DCRGraph graph, string templateId, string? spawnData, int maxConcurrency = 6)
+    public static void SpawnEach(DCRGraph graph, string templateId, string? spawnData)
     {
         if (spawnData == null)
         {
@@ -42,7 +41,7 @@ public static class SpawnHelper
         }
         else
         {
-            SpawnEachAsync(graph, templateId, spawnData, maxConcurrency).GetAwaiter().GetResult();
+            SpawnEachAsync(graph, templateId, spawnData).GetAwaiter().GetResult();
         }
     }
 
