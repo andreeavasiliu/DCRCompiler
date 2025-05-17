@@ -79,7 +79,6 @@ public class DCRGraph
         // Precompile logic for each event
         Parallel.ForEach(
                 Events.Values,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 e =>
                 {
                     e.CompiledLogic = UpdateCompiler.GenerateLogicForEvent(e.Id);
@@ -168,10 +167,7 @@ public class DCRGraph
     {
         if (data == null || data.Count == 0) return;
 
-        Parallel.ForEach(data.Keys, new ParallelOptions
-        {
-            MaxDegreeOfParallelism = Environment.ProcessorCount
-        }, key =>
+        Parallel.ForEach(data.Keys, key =>
         {
             var eventId = $"{templateId}:{instanceId}:{key}";
 
@@ -190,10 +186,7 @@ public class DCRGraph
 
     public void CompileSpawnedInstance(DCRGraph template, string templateId, int instanceId)
     {
-        Parallel.ForEach(template.Events.Values, new ParallelOptions
-        {
-            MaxDegreeOfParallelism = Environment.ProcessorCount // Or whatever you like
-        }, e =>
+        Parallel.ForEach(template.Events.Values, e =>
         {
             var newID = $"{templateId}:{instanceId}:{e.Id}";
             if (Events.TryGetValue(newID, out var evt))
@@ -209,10 +202,7 @@ public class DCRGraph
         var eventIdMap = new ConcurrentDictionary<string, string>();
 
         // Step 1: Clone events in parallel
-        Parallel.ForEach(template.Events.Values, new ParallelOptions
-        {
-            MaxDegreeOfParallelism = Environment.ProcessorCount
-        }, e =>
+        Parallel.ForEach(template.Events.Values, e =>
         {
             var newID = $"{templateId}:{instanceId}:{e.Id}";
             Events[newID] = e.CloneWithId(newID, instanceId);
@@ -226,10 +216,7 @@ public class DCRGraph
         // Step 3: Copy relationships in parallel
         var newRelationships = new ConcurrentBag<Relationship>();
 
-        Parallel.ForEach(template.Relationships, new ParallelOptions
-        {
-            MaxDegreeOfParallelism = Environment.ProcessorCount
-        }, r =>
+        Parallel.ForEach(template.Relationships, r =>
         {
             var targetId = eventIdMap.TryGetValue(r.TargetId, out var tid)
                 ? tid
@@ -248,13 +235,11 @@ public class DCRGraph
         });
 
         // Step 4: Merge new relationships (lock optional if Relationships is thread-safe)
-        lock (Relationships)
-        {
+        
             foreach (var rel in newRelationships)
             {
                 Relationships.Add(rel);
             }
-        }
     }
 
 }
