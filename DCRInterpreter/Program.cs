@@ -30,15 +30,29 @@ class Program
                 options.UpdateModelLog = true
             );
         });
-
+        Console.ForegroundColor= ConsoleColor.Green;
+        Console.WriteLine("DCR Interpreter Benchmark");
+        Console.WriteLine("====================================");
+        Console.WriteLine($"{"I",4}  {"Mean",10}  {"Error",10}  {"StdDev",10}  {"Allocated",10}");
         var maxmilisec = 1; //60000ms = 60 sec
-        foreach (var i in  new int[] { 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 })
+        foreach (var i in new int[] { 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 })
         {
             var spawnData = JsonConvert.DeserializeObject<List<Dictionary<string, object?>>>(SpawnData)
                     ?? new List<Dictionary<string, object?>>();
             SpawnI = JsonConvert.SerializeObject(spawnData.Take(i));
             //BenchRuntime(runtime, doc, maxmilisec);
             BenchInterp(doc, maxmilisec, i);
+        }
+        Console.WriteLine();
+        Console.ForegroundColor= ConsoleColor.Cyan;
+        Console.WriteLine( "Binary Benchmark");
+        Console.WriteLine("====================================");
+        Console.WriteLine($"{"I",4}  {"Mean",10}  {"Error",10}  {"StdDev",10}  {"Allocated",10}");
+        foreach (var i in new int[] { 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 })
+        {
+            var spawnData = JsonConvert.DeserializeObject<List<Dictionary<string, object?>>>(SpawnData)
+                    ?? new List<Dictionary<string, object?>>();
+            SpawnI = JsonConvert.SerializeObject(spawnData.Take(i));
             BenchBinary(doc, maxmilisec, i);
         }
         Console.ReadKey();
@@ -47,70 +61,51 @@ class Program
 
     static void BenchBinary(XDocument original, int maxtime, int i)
     {
-        Stopwatch execute = new Stopwatch();
-        Stopwatch parse = new Stopwatch();
-        int loop = 0;
         DCRGraph pregraph = DCRInterpreter.ParseDCRGraphFromXml(original);
-        int count = 0;
-        int spanwTotal = 0;
-        var bin = DCRFastInterpreter.Serialize(pregraph);
 
-        while (execute.ElapsedMilliseconds <= maxtime)
+        var bin = DCRFastInterpreter.Serialize(pregraph);
+        var durations = new List<double>();
+        var allocations = new List<long>();
+
+        for (int j = 0; j < 10; j++) // 10 runs for stats
         {
+            var parse = new Stopwatch();
+            var execute = new Stopwatch();
+
             parse.Start();
             var graph = DCRFastInterpreter.Deserialize(bin);
-            
             parse.Stop();
 
-            graph.Relationships.Where(x => x.Type == RelationshipType.Spawn).ToList().ForEach(x =>
-            {
-                x.SpawnData = SpawnI;
-            });
+            graph.Relationships
+                .Where(x => x.Type == RelationshipType.Spawn)
+                .ToList()
+                .ForEach(x => x.SpawnData = SpawnI);
             graph.Initialize();
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            long beforeAlloc = GC.GetAllocatedBytesForCurrentThread();
+
             execute.Start();
-
             graph.ExecuteEvent("listspawn");
-
-            // graph.ExecuteEvent("application:full_name", "Jim Bean");
-            // graph.ExecuteEvent("application:email_addr", "jimbean@test.test");
-            // graph.ExecuteEvent("application:phone_number", "1234567890");
-            // graph.ExecuteEvent("application:dob", "1990-01-01");
-            // graph.ExecuteEvent("application:personal_info");
-            // graph.ExecuteEvent("application:resume", "resume.pdf");
-            // graph.ExecuteEvent("application:upload_doc");
-            // graph.ExecuteEvent("application:position", "4");
-            // graph.ExecuteEvent("application:avail_start_date", "2023-10-01");
-            // graph.ExecuteEvent("application:applic_details");
-            // graph.ExecuteEvent("application:A16");
-            // graph.ExecuteEvent("application:A15");
-            // graph.ExecuteEvent("rev_applic", "2");
-            // graph.ExecuteEvent("A3", "12/25/2015 10:30:00 AM");
-
-            //graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
-            //graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
-            //graph.ExecuteEvent("reason", "Tired");
-            //graph.ExecuteEvent("vacation_request");
-            //graph.ExecuteEvent("approved", "true");
-            //graph.ExecuteEvent("employee_name", "Jim Bean");
-            //graph.ExecuteEvent("employee_email", "jim@bean.org");
-            //graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
-            //graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
-            //graph.ExecuteEvent("reason", "Tired");
-            //graph.ExecuteEvent("vacation_request");
-            //graph.ExecuteEvent("approved", "true");
-            //graph.ExecuteEvent("review_request");
-            //graph.ExecuteEvent("submit_to_hr");
             execute.Stop();
-            loop++;
+
+            long afterAlloc = GC.GetAllocatedBytesForCurrentThread();
+
+            durations.Add(execute.Elapsed.TotalMilliseconds);
+            allocations.Add(afterAlloc - beforeAlloc);
         }
 
-        Measure(ConsoleColor.Cyan, "Iterpreter w/ Binary Parsing", execute.Elapsed, parse.Elapsed, loop, 1, i);
+        PrintStats(ConsoleColor.Cyan, i, durations, allocations);
     }
 
     static void BenchRuntime(Runtime runtime, XDocument original, int maxtime, int i)
     {
         Stopwatch execute = new Stopwatch();
         Stopwatch parse = new Stopwatch();
+        
         int loop = 0;
         int count = 0;
 
@@ -141,65 +136,43 @@ class Program
 
     static void BenchInterp(XDocument original, int maxtime, int i)
     {
-        Stopwatch execute = new Stopwatch();
-        Stopwatch parse = new Stopwatch();
-        int loop = 0;
-        int count = 0;
-        int spanwTotal = 0;
-        while (execute.ElapsedMilliseconds <= maxtime)
+        var durations = new List<double>();
+        var allocations = new List<long>();
+        for (int j = 0; j < 10; j++) // 10 runs for stats
         {
+            var parse = new Stopwatch();
+            var execute = new Stopwatch();
+
             parse.Start();
             DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(original);
-           
             parse.Stop();
-            
 
-            graph.Relationships.Where(x => x.Type == RelationshipType.Spawn).ToList().ForEach(x =>
-            {
-                x.SpawnData = SpawnI;
-            });
+            graph.Relationships
+                .Where(x => x.Type == RelationshipType.Spawn)
+                .ToList()
+                .ForEach(x => x.SpawnData = SpawnI);
             graph.Initialize();
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            long beforeAlloc = GC.GetAllocatedBytesForCurrentThread();
 
             execute.Start();
             graph.ExecuteEvent("listspawn");
-
-            // graph.ExecuteEvent("application:full_name", "Jim Bean");
-            // graph.ExecuteEvent("application:email_addr", "jimbean@test.test");
-            // graph.ExecuteEvent("application:phone_number", "1234567890");
-            // graph.ExecuteEvent("application:dob", "1990-01-01");
-            // graph.ExecuteEvent("application:personal_info");
-            // graph.ExecuteEvent("application:resume", "resume.pdf");
-            // graph.ExecuteEvent("application:upload_doc");
-            // graph.ExecuteEvent("application:position", "4");
-            // graph.ExecuteEvent("application:avail_start_date", "2023-10-01");
-            // graph.ExecuteEvent("application:applic_details");
-            // graph.ExecuteEvent("application:A16");
-            // graph.ExecuteEvent("application:A15");
-            // graph.ExecuteEvent("rev_applic", "2");
-            // graph.ExecuteEvent("A3", "12/25/2015 10:30:00 AM");
-
-            //graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
-            //graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
-            //graph.ExecuteEvent("reason", "Tired");
-            //graph.ExecuteEvent("vacation_request");
-            //graph.ExecuteEvent("approved", "true");
-            //graph.ExecuteEvent("employee_name", "Jim Bean");
-            //graph.ExecuteEvent("employee_email", "jim@bean.org");
-            //graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
-            //graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
-            //graph.ExecuteEvent("reason", "Tired");
-            //graph.ExecuteEvent("vacation_request");
-            //graph.ExecuteEvent("approved", "true");
-            //graph.ExecuteEvent("review_request");
-            //graph.ExecuteEvent("submit_to_hr");
-
             execute.Stop();
-            loop++;
+
+            long afterAlloc = GC.GetAllocatedBytesForCurrentThread();
+
+            durations.Add(execute.Elapsed.TotalMilliseconds);
+            allocations.Add(afterAlloc - beforeAlloc);
         }
-        Measure(ConsoleColor.Green, "Iterpreter", execute.Elapsed, parse.Elapsed, loop, count, i);
+
+        PrintStats(ConsoleColor.Green, i, durations, allocations);
     }
 
-    static void Measure(ConsoleColor consoleColor, string ExecutionName, TimeSpan execution, TimeSpan parsing, int loop, int eventsperloop,int spawnCount)
+    static void Measure(ConsoleColor consoleColor, string ExecutionName, TimeSpan execution, TimeSpan parsing, int loop, int eventsperloop, int spawnCount)
     {
         string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             execution.Hours, execution.Minutes, execution.Seconds, execution.Milliseconds / 10);
@@ -218,5 +191,16 @@ class Program
         // Console.WriteLine($"Parsing {loop} times took {elapsedParseTime} to finish");
         // Console.WriteLine($"        which means {parsing.TotalMilliseconds / loop}ms per parse");
         Console.WriteLine();
+    }
+    static void PrintStats(ConsoleColor consoleColor, int i, List<double> times, List<long> allocs)
+    {
+        var mean = times.Average();
+        var stddev = Math.Sqrt(times.Select(t => Math.Pow(t - mean, 2)).Average());
+        var error = stddev / Math.Sqrt(times.Count);
+
+        var memAvg = allocs.Average() / 1024 / 1024;
+         Console.ForegroundColor = consoleColor;
+       Console.WriteLine($"{i,4}  {mean,10:F2} ms  {error,10:F2} ms  {stddev,10:F2} ms  {memAvg,10:F2} MB");
+
     }
 }
