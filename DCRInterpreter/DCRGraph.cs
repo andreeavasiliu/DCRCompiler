@@ -3,7 +3,7 @@
 [MessagePackObject]
 public class DCRGraph
 {
-    
+
     [Key(0)]
     public string Title { get; set; }
     [Key(1)]
@@ -76,10 +76,14 @@ public class DCRGraph
         UpdateCompiler = new StateUpdateCompiler(this);
 
         // Precompile logic for each event
-        foreach (var e in Events.Values)
-        {
-            e.CompiledLogic = UpdateCompiler.GenerateLogicForEvent(e.Id);
-        }
+        Parallel.ForEach(
+                Events.Values,
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                e =>
+                {
+                    e.CompiledLogic = UpdateCompiler.GenerateLogicForEvent(e.Id);
+                });
+
     }
 
 
