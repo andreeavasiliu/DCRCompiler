@@ -146,26 +146,13 @@ public class DCRGraph
     }
     [IgnoreMember]
     private int _instanceIdCounter = 0;
-    public void AddSpawnWithData(string templateId, Dictionary<string, object?> data)
+    public void AddSpawnWithData(string templateId)
     {
         int instanceId;
         lock (SpawnedInstances)
         {
             instanceId = _instanceIdCounter;
             AddSpawnedInstance(templateId, instanceId); // Now uses atomic counter
-        }
-    
-        if (data == null || data.Count == 0)
-            return;
-        lock (Events)
-        {
-            foreach (var e in data.Keys)
-            {
-                var eventId = $"{templateId}:{instanceId}:{e}";
-                if (!Events.ContainsKey(eventId))
-                    throw new ArgumentException($"Event {eventId} not found.");
-                Events[eventId].Data = data[e];
-            }
         }
 
     }
@@ -206,6 +193,18 @@ public class DCRGraph
                     Children = existingEvent.Children.ToList(),
                     Parent = existingEvent.Parent
                 };
+            }
+        }
+    }
+    public void CompileSpawnedInstance(string templateId, int instanceId)
+    {
+        var template = Templates[templateId];
+        foreach (var e in template.Events.Values)
+        {
+            var newID = $"{templateId}:{instanceId}:{e.Id}";
+            if (Events.ContainsKey(newID))
+            {
+                Events[newID].CompiledLogic = UpdateCompiler.GenerateLogicForEvent(newID);
             }
         }
     }
