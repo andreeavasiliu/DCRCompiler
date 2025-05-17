@@ -208,7 +208,7 @@ public class DCRInterpreter
 
 public class DCRFastInterpreter
 {
-    static MessagePackSerializerOptions options = MessagePackSerializerOptions.Standard.WithResolver(CustomResolver.Instance);
+    static MessagePackSerializerOptions options = MessagePackSerializerOptions.Standard.WithResolver(CustomResolver.Instance).WithCompression(MessagePackCompression.Lz4BlockArray);
     public class EventFormatter : IMessagePackFormatter<Event?> // Must be explicitly bind
     {
         public void Serialize(ref MessagePackWriter writer, Event? value, MessagePackSerializerOptions options)
