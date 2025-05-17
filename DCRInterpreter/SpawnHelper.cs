@@ -15,7 +15,7 @@ public static class SpawnHelper
             .Select(_ => graph.GetNextInstanceId())
             .ToList();
 
-        Parallel.ForEach(entries.Zip(instanceIds), (pair, token) =>
+        Parallel.ForEach(entries.Zip(instanceIds), new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (pair, token) =>
         {
             ProcessSpawnEntry(graph, templateId, pair.First, pair.Second);
         });

@@ -168,13 +168,16 @@ public class DCRGraph
     {
         if (data == null || data.Count == 0) return;
 
-        foreach (var key in data.Keys)
+        Parallel.ForEach(data.Keys, new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Environment.ProcessorCount
+        }, key =>
         {
             var eventId = $"{templateId}:{instanceId}:{key}";
 
             if (!Events.TryGetValue(eventId, out var existingEvent))
             {
-                if (!template.Events.ContainsKey(key)) continue;
+                if (!template.Events.ContainsKey(key)) return;
                 throw new ArgumentException($"Event {eventId} not found.");
             }
 
@@ -194,59 +197,80 @@ public class DCRGraph
                 Parent = existingEvent.Parent
             };
 
-            Events[eventId] = updatedEvent;
-        }
+            Events[eventId] = updatedEvent; // Thread-safe if Events is a ConcurrentDictionary
+        });
     }
+
 
     public void CompileSpawnedInstance(DCRGraph template, string templateId, int instanceId)
     {
-        foreach (var e in template.Events.Values)
+        Parallel.ForEach(template.Events.Values, new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Environment.ProcessorCount // Or whatever you like
+        }, e =>
         {
             var newID = $"{templateId}:{instanceId}:{e.Id}";
             if (Events.TryGetValue(newID, out var evt))
             {
                 evt.CompiledLogic = UpdateCompiler.GenerateLogicForEvent(newID);
             }
-        }
+        });
     }
 
     public void AddSpawnedInstance(DCRGraph template, string templateId, int instanceId)
     {
+        var instanceEvents = new ConcurrentBag<string>(); // Thread-safe
+        var eventIdMap = new ConcurrentDictionary<string, string>();
 
-        var instanceEvents = new List<string>();
-
-        foreach (var e in template.Events.Values)
+        // Step 1: Clone events in parallel
+        Parallel.ForEach(template.Events.Values, new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Environment.ProcessorCount
+        }, e =>
         {
             var newID = $"{templateId}:{instanceId}:{e.Id}";
             Events[newID] = e.CloneWithId(newID, instanceId);
             instanceEvents.Add(newID);
-        }
-        SpawnedInstances[instanceId] = instanceEvents;
-        var eventIdMap = Events.ToDictionary(e => e.Value.Id, e => e.Key); // O(n), once
+            eventIdMap[e.Id] = newID;
+        });
 
+        // Step 2: Save the instanceEvents list (converting ConcurrentBag to List)
+        SpawnedInstances[instanceId] = instanceEvents.ToList();
 
-        // Copy relationships from template
-        foreach (var r in template.Relationships)
+        // Step 3: Copy relationships in parallel
+        var newRelationships = new ConcurrentBag<Relationship>();
+
+        Parallel.ForEach(template.Relationships, new ParallelOptions
         {
-            var targetEvent = eventIdMap.TryGetValue(r.TargetId, out var targetId);
-            targetId = targetEvent ? targetId : $"{templateId}:{instanceId}:{r.TargetId}";
-            var sourceEvent = eventIdMap.TryGetValue(r.SourceId, out var sourceId);
-            sourceId = sourceEvent ? sourceId : $"{templateId}:{instanceId}:{r.SourceId}";
-            var newRelationship = new Relationship(
-                targetId,
-                sourceId,
-                r.Type
-            )
+            MaxDegreeOfParallelism = Environment.ProcessorCount
+        }, r =>
+        {
+            var targetId = eventIdMap.TryGetValue(r.TargetId, out var tid)
+                ? tid
+                : $"{templateId}:{instanceId}:{r.TargetId}";
+
+            var sourceId = eventIdMap.TryGetValue(r.SourceId, out var sid)
+                ? sid
+                : $"{templateId}:{instanceId}:{r.SourceId}";
+
+            var newRelationship = new Relationship(targetId, sourceId, r.Type)
             {
                 GuardExpression = r.GuardExpression
             };
-            lock (Relationships)
+
+            newRelationships.Add(newRelationship);
+        });
+
+        // Step 4: Merge new relationships (lock optional if Relationships is thread-safe)
+        lock (Relationships)
+        {
+            foreach (var rel in newRelationships)
             {
-                Relationships.Add(newRelationship);
+                Relationships.Add(rel);
             }
         }
-
     }
+
 }
 
 [MessagePackObject]

@@ -45,6 +45,8 @@ class Program
         Stopwatch parse = new Stopwatch();
         int loop = 0;
         DCRGraph pregraph = DCRInterpreter.ParseDCRGraphFromXml(original);
+        int count = 0;
+        int spanwTotal = 0;
         var bin = DCRFastInterpreter.Serialize(pregraph);
 
         while (execute.ElapsedMilliseconds <= maxtime)
@@ -54,6 +56,7 @@ class Program
             graph.Initialize();
             parse.Stop();
 
+            count=graph.Events.Count;
             execute.Start();
 
             graph.ExecuteEvent("listspawn");
@@ -88,9 +91,10 @@ class Program
             //graph.ExecuteEvent("review_request");
             //graph.ExecuteEvent("submit_to_hr");
             execute.Stop();
+            spanwTotal = count - graph.Events.Count;
             loop++;
         }
-        Measure(ConsoleColor.Cyan, "Iterpreter w/ Binary Parsing", execute.Elapsed, parse.Elapsed, loop, 1);
+        Measure(ConsoleColor.Cyan, "Iterpreter w/ Binary Parsing", execute.Elapsed, parse.Elapsed, loop, count, spanwTotal);
     }
 
     static void BenchRuntime(Runtime runtime, XDocument original, int maxtime)
@@ -98,12 +102,15 @@ class Program
         Stopwatch execute = new Stopwatch();
         Stopwatch parse = new Stopwatch();
         int loop = 0;
+        int count = 0;
+        int spanwTotal = 0;
 
         while (execute.ElapsedMilliseconds <= maxtime)
         {
             parse.Start();
             var model = runtime.Parse(original);
             parse.Stop();
+            count = model.AllActivities.Count();
 
             execute.Start();
 
@@ -120,7 +127,7 @@ class Program
             execute.Stop();
             loop++;
         }
-        Measure(ConsoleColor.Yellow, "Workflow", execute.Elapsed, parse.Elapsed, loop, 9);
+        Measure(ConsoleColor.Yellow, "Workflow", execute.Elapsed, parse.Elapsed, loop, count, spanwTotal);
     }
 
     static void BenchInterp(XDocument original, int maxtime)
@@ -128,20 +135,18 @@ class Program
         Stopwatch execute = new Stopwatch();
         Stopwatch parse = new Stopwatch();
         int loop = 0;
+        int count = 0;
+        int spanwTotal = 0;
         while (execute.ElapsedMilliseconds <= maxtime)
         {
             parse.Start();
             DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(original);
             graph.Initialize();
             parse.Stop();
-
+            count = graph.Events.Count();
             execute.Start();
-            var init = graph.Events.Count();
+            
             graph.ExecuteEvent("listspawn");
-            var spanwTotal =  graph.Events.Count() - init;
-
-            Console.WriteLine($"Spawned {spanwTotal} new events"); 
-            Console.WriteLine($"SpawnedInstances: {graph.SpawnedInstances.Count()}");
 
             // graph.ExecuteEvent("application:full_name", "Jim Bean");
             // graph.ExecuteEvent("application:email_addr", "jimbean@test.test");
@@ -174,12 +179,16 @@ class Program
             //graph.ExecuteEvent("submit_to_hr");
 
             execute.Stop();
+
+            spanwTotal = graph.Events.Count() - count;
+            Console.WriteLine($"Spawned {spanwTotal} new events");
+            Console.WriteLine($"SpawnedInstances: {graph.SpawnedInstances.Count()}");
             loop++;
         }
-        Measure(ConsoleColor.Green, "Iterpreter", execute.Elapsed, parse.Elapsed, loop, 1);
+        Measure(ConsoleColor.Green, "Iterpreter", execute.Elapsed, parse.Elapsed, loop, count, spanwTotal);
     }
 
-    static void Measure(ConsoleColor consoleColor, string ExecutionName, TimeSpan execution, TimeSpan parsing, int loop, int eventsperloop)
+    static void Measure(ConsoleColor consoleColor, string ExecutionName, TimeSpan execution, TimeSpan parsing, int loop, int eventsperloop, int spawnedevents)
     {
         string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             execution.Hours, execution.Minutes, execution.Seconds, execution.Milliseconds / 10);
