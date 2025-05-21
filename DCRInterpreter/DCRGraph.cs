@@ -214,7 +214,6 @@ public class DCRGraph
         SpawnedInstances[instanceId] = instanceEvents.ToList();
 
         // Step 3: Copy relationships in parallel
-        var newRelationships = new ConcurrentBag<Relationship>();
 
         Parallel.ForEach(template.Relationships, r =>
         {
@@ -231,17 +230,10 @@ public class DCRGraph
                 GuardExpression = r.GuardExpression
             };
 
-            newRelationships.Add(newRelationship);
+            Relationships.Add(newRelationship);
         });
 
-        // Step 4: Merge new relationships (lock optional if Relationships is thread-safe)
-        
-            foreach (var rel in newRelationships)
-            {
-                Relationships.Add(rel);
-            }
     }
-
 }
 
 [MessagePackObject]
