@@ -31,5 +31,8 @@
     <None Update="spawn_bench.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="the_ultimate_test.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     </ItemGroup>
 </Project>

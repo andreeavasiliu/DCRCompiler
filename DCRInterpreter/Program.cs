@@ -10,9 +10,9 @@ class Program
     static void Main(string[] args)
     {
         string xmlFilePath = "spawn_bench.xml";
-        //string xmlFilePath = "job_interview.xml";
-        //string xmlFilePath2 = "DCR-interpreter.xml";
-        //string xmlFilePath = "the_ultimate_test.xml";
+        string xmlFilePath1 = "job_interview.xml";
+        string xmlFilePath2 = "DCR-interpreter.xml";
+        string xmlFilePath3 = "the_ultimate_test.xml";
 
         if (!File.Exists(xmlFilePath))
         {
@@ -20,8 +20,22 @@ class Program
             return;
         }
         DoBenchmark(XDocument.Load(xmlFilePath));
+        DoParseBenchmark(XDocument.Load(xmlFilePath3));
     }
 
+    static void DoParseBenchmark(XDocument doc)
+    {
+        var runtime = DCR.Workflow.Runtime.Create(builder =>
+        {
+            builder.WithOptions(options =>
+                options.UpdateModelLog = true
+            );
+        });
+
+        ParseBin(doc,10000);
+        //ParseRuntime(runtime, doc, 10000);
+        ParseInterpret(doc, 10000);
+    }
     static void DoBenchmark(XDocument doc)
     {
         var runtime = DCR.Workflow.Runtime.Create(builder =>
@@ -57,6 +71,57 @@ class Program
         }
         Console.ReadKey();
 
+    }
+
+    static void ParseBin(XDocument original, int maxtime)
+    {
+        DCRGraph pregraph = DCRInterpreter.ParseDCRGraphFromXml(original);
+        var bin = DCRFastInterpreter.Serialize(pregraph);
+        var parse = new Stopwatch();
+        int count = 0;
+        while (count <= maxtime)
+        {
+            parse.Start();
+            var graph = DCRFastInterpreter.Deserialize(bin);
+            graph.Initialize();
+            parse.Stop();
+            count++;
+        }
+        Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine($"Binary:  {parse.Elapsed.TotalNanoseconds / count} ns");
+    }
+    static void ParseRuntime(Runtime runtime, XDocument original, int maxtime)
+    {
+        var parse = new Stopwatch();
+        int count = 0;
+        while (count <= maxtime)
+        {
+            parse.Start();
+            var model = runtime.Parse(original);
+            parse.Stop();
+            count++;
+        }
+        Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"Runtime:  {parse.Elapsed.TotalNanoseconds / count} ns");
+    }
+
+    static void ParseInterpret(XDocument original, int maxtime)
+    {
+        var parse = new Stopwatch();
+        int count = 0;
+        while (count <= maxtime)
+        {
+            parse.Start();
+            DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(original);
+            graph.Initialize();
+            parse.Stop();
+            count++;
+        }
+        Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"Interpret:  {parse.Elapsed.TotalNanoseconds / count} ns");
     }
 
     static void BenchBinary(XDocument original, int maxtime, int i)
@@ -96,6 +161,33 @@ class Program
 
             durations.Add(execute.Elapsed.TotalMilliseconds);
             allocations.Add(afterAlloc - beforeAlloc);
+
+            if (j == 0)
+            {
+                var bin2 = DCRFastInterpreter.Serialize(graph);
+
+                // Get project root (relative to current directory)
+                var dumpDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "dump");
+                Directory.CreateDirectory(dumpDir); // Creates if it doesn't exist
+
+                var filePath = Path.Combine(dumpDir, $"graph_dump_{i}.bin");
+                File.WriteAllBytes(filePath, bin2);
+
+                var fileInfo = new FileInfo(filePath);
+
+                // File size in bytes
+                long sizeBytes = fileInfo.Length;
+
+                // Convert to kilobytes (rounded to 2 decimal places)
+                double sizeKB = sizeBytes / 1024.0;
+
+                // Assume typical 4KB cluster size
+                int clusterSize = 4096;
+                long sizeOnDiskBytes = ((sizeBytes + clusterSize - 1) / clusterSize) * clusterSize;
+                double sizeOnDiskKB = sizeOnDiskBytes / 1024.0;
+
+                Console.WriteLine($"File size: {sizeKB:F2} KB");
+            }
         }
 
         PrintStats(ConsoleColor.Cyan, i, durations, allocations);
