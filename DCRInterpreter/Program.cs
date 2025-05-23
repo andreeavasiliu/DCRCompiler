@@ -19,8 +19,14 @@ class Program
             Console.WriteLine($"Error: File '{xmlFilePath}' not found.");
             return;
         }
+        Thread.Sleep(500);
+        DoExecBenchmark(XDocument.Load(xmlFilePath2));
+        Thread.Sleep(500);
         DoBenchmark(XDocument.Load(xmlFilePath));
+        Thread.Sleep(500);
         DoParseBenchmark(XDocument.Load(xmlFilePath3));
+
+        Console.ReadKey();
     }
 
     static void DoParseBenchmark(XDocument doc)
@@ -32,9 +38,13 @@ class Program
             );
         });
 
-        ParseBin(doc,10000);
+        ParseBin(doc, 10000);
         //ParseRuntime(runtime, doc, 10000);
         ParseInterpret(doc, 10000);
+    }
+    static void DoExecBenchmark(XDocument doc)
+    {
+        BenchInterpExec(doc);
     }
     static void DoBenchmark(XDocument doc)
     {
@@ -44,33 +54,8 @@ class Program
                 options.UpdateModelLog = true
             );
         });
-        Console.ForegroundColor= ConsoleColor.Green;
-        Console.WriteLine("DCR Interpreter Benchmark");
-        Console.WriteLine("====================================");
-        Console.WriteLine($"{"I",4}  {"Mean",10}  {"Error",10}  {"StdDev",10}  {"Allocated",10}");
-        var maxmilisec = 1; //60000ms = 60 sec
-        foreach (var i in new int[] { 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 })
-        {
-            var spawnData = JsonConvert.DeserializeObject<List<Dictionary<string, object?>>>(SpawnData)
-                    ?? new List<Dictionary<string, object?>>();
-            SpawnI = JsonConvert.SerializeObject(spawnData.Take(i));
-            //BenchRuntime(runtime, doc, maxmilisec);
-            BenchInterp(doc, maxmilisec, i);
-        }
-        Console.WriteLine();
-        Console.ForegroundColor= ConsoleColor.Cyan;
-        Console.WriteLine( "Binary Benchmark");
-        Console.WriteLine("====================================");
-        Console.WriteLine($"{"I",4}  {"Mean",10}  {"Error",10}  {"StdDev",10}  {"Allocated",10}");
-        foreach (var i in new int[] { 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 })
-        {
-            var spawnData = JsonConvert.DeserializeObject<List<Dictionary<string, object?>>>(SpawnData)
-                    ?? new List<Dictionary<string, object?>>();
-            SpawnI = JsonConvert.SerializeObject(spawnData.Take(i));
-            BenchBinary(doc, maxmilisec, i);
-        }
-        Console.ReadKey();
-
+        BenchInterp(doc);
+        BenchBinary(doc);
     }
 
     static void ParseBin(XDocument original, int maxtime)
@@ -124,80 +109,93 @@ class Program
         Console.WriteLine($"Interpret:  {parse.Elapsed.TotalNanoseconds / count} ns");
     }
 
-    static void BenchBinary(XDocument original, int maxtime, int i)
+    static void BenchBinary(XDocument original)
     {
+        Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("Binary Benchmark");
+        Console.WriteLine("====================================");
+        Console.WriteLine($"{"I",4}  {"Mean",13}  {"Error",13}  {"StdDev",13}  {"Allocated",13}");
+
         DCRGraph pregraph = DCRInterpreter.ParseDCRGraphFromXml(original);
 
         var bin = DCRFastInterpreter.Serialize(pregraph);
         var durations = new List<double>();
         var allocations = new List<long>();
 
-        for (int j = 0; j < 10; j++) // 10 runs for stats
+        foreach (var i in new int[] { 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 })
         {
-            var parse = new Stopwatch();
-            var execute = new Stopwatch();
+            var spawnData = JsonConvert.DeserializeObject<List<Dictionary<string, object?>>>(SpawnData)
+                    ?? new List<Dictionary<string, object?>>();
+            SpawnI = JsonConvert.SerializeObject(spawnData.Take(i));
 
-            parse.Start();
-            var graph = DCRFastInterpreter.Deserialize(bin);
-            parse.Stop();
-
-            graph.Relationships
-                .Where(x => x.Type == RelationshipType.Spawn)
-                .ToList()
-                .ForEach(x => x.SpawnData = SpawnI);
-            graph.Initialize();
-
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
-            long beforeAlloc = GC.GetAllocatedBytesForCurrentThread();
-
-            execute.Start();
-            graph.ExecuteEvent("listspawn");
-            execute.Stop();
-
-            long afterAlloc = GC.GetAllocatedBytesForCurrentThread();
-
-            durations.Add(execute.Elapsed.TotalMilliseconds);
-            allocations.Add(afterAlloc - beforeAlloc);
-
-            if (j == 0)
+            for (int j = 0; j < 10; j++) // 10 runs for stats
             {
-                var bin2 = DCRFastInterpreter.Serialize(graph);
+                var parse = new Stopwatch();
+                var execute = new Stopwatch();
 
-                // Get project root (relative to current directory)
-                var dumpDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "dump");
-                Directory.CreateDirectory(dumpDir); // Creates if it doesn't exist
+                parse.Start();
+                var graph = DCRFastInterpreter.Deserialize(bin);
+                parse.Stop();
 
-                var filePath = Path.Combine(dumpDir, $"graph_dump_{i}.bin");
-                File.WriteAllBytes(filePath, bin2);
+                graph.Relationships
+                    .Where(x => x.Type == RelationshipType.Spawn)
+                    .ToList()
+                    .ForEach(x => x.SpawnData = SpawnI);
+                graph.Initialize();
 
-                var fileInfo = new FileInfo(filePath);
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
 
-                // File size in bytes
-                long sizeBytes = fileInfo.Length;
+                long beforeAlloc = GC.GetAllocatedBytesForCurrentThread();
 
-                // Convert to kilobytes (rounded to 2 decimal places)
-                double sizeKB = sizeBytes / 1024.0;
+                execute.Start();
+                graph.ExecuteEvent("listspawn");
+                execute.Stop();
 
-                // Assume typical 4KB cluster size
-                int clusterSize = 4096;
-                long sizeOnDiskBytes = ((sizeBytes + clusterSize - 1) / clusterSize) * clusterSize;
-                double sizeOnDiskKB = sizeOnDiskBytes / 1024.0;
+                long afterAlloc = GC.GetAllocatedBytesForCurrentThread();
 
-                Console.WriteLine($"File size: {sizeKB:F2} KB");
+                durations.Add(execute.Elapsed.TotalMilliseconds);
+                allocations.Add(afterAlloc - beforeAlloc);
+
+                //if (j == 0)
+                //{
+                //    var bin2 = DCRFastInterpreter.Serialize(graph);
+
+                //    // Get project root (relative to current directory)
+                //    var dumpDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "dump");
+                //    Directory.CreateDirectory(dumpDir); // Creates if it doesn't exist
+
+                //    var filePath = Path.Combine(dumpDir, $"graph_dump_{i}.bin");
+                //    File.WriteAllBytes(filePath, bin2);
+
+                //    var fileInfo = new FileInfo(filePath);
+
+                //    // File size in bytes
+                //    long sizeBytes = fileInfo.Length;
+
+                //    // Convert to kilobytes (rounded to 2 decimal places)
+                //    double sizeKB = sizeBytes / 1024.0;
+
+                //    // Assume typical 4KB cluster size
+                //    int clusterSize = 4096;
+                //    long sizeOnDiskBytes = ((sizeBytes + clusterSize - 1) / clusterSize) * clusterSize;
+                //    double sizeOnDiskKB = sizeOnDiskBytes / 1024.0;
+
+                //    Console.WriteLine($"File size: {sizeKB:F2} KB");
+                //}
             }
-        }
 
-        PrintStats(ConsoleColor.Cyan, i, durations, allocations);
+            PrintStats(ConsoleColor.Cyan, i, durations, allocations);
+        }
     }
 
     static void BenchRuntime(Runtime runtime, XDocument original, int maxtime, int i)
     {
         Stopwatch execute = new Stopwatch();
         Stopwatch parse = new Stopwatch();
-        
+
         int loop = 0;
         int count = 0;
 
@@ -226,42 +224,111 @@ class Program
         Measure(ConsoleColor.Yellow, "Workflow", execute.Elapsed, parse.Elapsed, loop, count, i);
     }
 
-    static void BenchInterp(XDocument original, int maxtime, int i)
+    static void BenchInterp(XDocument original)
     {
+        Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("DCR Interpreter Benchmark");
+        Console.WriteLine("====================================");
+        Console.WriteLine($"{"I",4}  {"Mean",13}  {"Error",13}  {"StdDev",13}  {"Allocated",13}");
+
         var durations = new List<double>();
         var allocations = new List<long>();
-        for (int j = 0; j < 10; j++) // 10 runs for stats
+
+        foreach (var i in new int[] { 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 })
         {
-            var parse = new Stopwatch();
-            var execute = new Stopwatch();
+            var spawnData = JsonConvert.DeserializeObject<List<Dictionary<string, object?>>>(SpawnData)
+                    ?? new List<Dictionary<string, object?>>();
+            SpawnI = JsonConvert.SerializeObject(spawnData.Take(i));
 
-            parse.Start();
-            DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(original);
-            parse.Stop();
+            for (int j = 0; j < 10; j++) // 10 runs for stats
+            {
+                var parse = new Stopwatch();
+                var execute = new Stopwatch();
 
-            graph.Relationships
-                .Where(x => x.Type == RelationshipType.Spawn)
-                .ToList()
-                .ForEach(x => x.SpawnData = SpawnI);
-            graph.Initialize();
+                parse.Start();
+                DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(original);
+                parse.Stop();
 
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
+                graph.Relationships
+                    .Where(x => x.Type == RelationshipType.Spawn)
+                    .ToList()
+                    .ForEach(x => x.SpawnData = SpawnI);
+                graph.Initialize();
 
-            long beforeAlloc = GC.GetAllocatedBytesForCurrentThread();
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
 
-            execute.Start();
-            graph.ExecuteEvent("listspawn");
-            execute.Stop();
+                long beforeAlloc = GC.GetAllocatedBytesForCurrentThread();
 
-            long afterAlloc = GC.GetAllocatedBytesForCurrentThread();
+                execute.Start();
+                graph.ExecuteEvent("listspawn");
+                execute.Stop();
 
-            durations.Add(execute.Elapsed.TotalMilliseconds);
-            allocations.Add(afterAlloc - beforeAlloc);
+                long afterAlloc = GC.GetAllocatedBytesForCurrentThread();
+
+                durations.Add(execute.Elapsed.TotalMilliseconds);
+                allocations.Add(afterAlloc - beforeAlloc);
+            }
+
+            PrintStats(ConsoleColor.Green, i, durations, allocations);
         }
+    }
 
-        PrintStats(ConsoleColor.Green, i, durations, allocations);
+    static void BenchInterpExec(XDocument original)
+    {
+        Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.DarkGreen;
+        Console.WriteLine("DCR Interpreter Exec  Benchmark");
+        Console.WriteLine("====================================");
+        Console.WriteLine($"{"I",4}  {"Mean",13}  {"Error",13}  {"StdDev",13}  {"Allocated",13}");
+
+        var durations = new List<double>();
+        var allocations = new List<long>();
+
+        foreach (var i in new int[] { 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 })
+        {
+            for (int j = 0; j < 10; j++)
+            {
+                var graphs = new List<DCRGraph>();
+                for (int k = 0; k <= i-1; k+=10)
+                {
+                    DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(original);
+                    graph.Initialize();
+                    graphs.Add(graph);
+                }
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                var execute = new Stopwatch();
+                long beforeAlloc = GC.GetAllocatedBytesForCurrentThread();
+                
+                execute.Start();
+
+                //Execute I events
+                foreach (var graph in graphs)
+                {
+                    graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
+                    graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
+                    graph.ExecuteEvent("reason", "Tired");
+                    graph.ExecuteEvent("vacation_request");
+                    graph.ExecuteEvent("approved", "true");
+                    graph.ExecuteEvent("employee_name", "Jim Bean");
+                    graph.ExecuteEvent("employee_email", "jim@bean.org");
+                    graph.ExecuteEvent("start_date", DateTimeOffset.MinValue.ToString());
+                    graph.ExecuteEvent("end_date", DateTimeOffset.Now.ToString());
+                    graph.ExecuteEvent("reason", "Tired");
+                }
+
+                execute.Stop();
+                long afterAlloc = GC.GetAllocatedBytesForCurrentThread();
+                
+                durations.Add(execute.Elapsed.TotalMilliseconds);
+                allocations.Add(afterAlloc - beforeAlloc);
+            }
+            PrintStats(ConsoleColor.DarkGreen, i, durations, allocations);
+        }
     }
 
     static void Measure(ConsoleColor consoleColor, string ExecutionName, TimeSpan execution, TimeSpan parsing, int loop, int eventsperloop, int spawnCount)
@@ -291,8 +358,8 @@ class Program
         var error = stddev / Math.Sqrt(times.Count);
 
         var memAvg = allocs.Average() / 1024 / 1024;
-         Console.ForegroundColor = consoleColor;
-       Console.WriteLine($"{i,4}  {mean,10:F2} ms  {error,10:F2} ms  {stddev,10:F2} ms  {memAvg,10:F2} MB");
+        //Console.ForegroundColor = consoleColor;
+        Console.WriteLine($"{i,4}  {mean,10:F2} ms  {error,10:F2} ms  {stddev,10:F2} ms  {memAvg,10:F2} MB");
 
     }
 }
