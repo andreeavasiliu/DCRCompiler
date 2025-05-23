@@ -31,20 +31,14 @@ class Program
 
     static void DoParseBenchmark(XDocument doc)
     {
-        var runtime = DCR.Workflow.Runtime.Create(builder =>
-        {
-            builder.WithOptions(options =>
-                options.UpdateModelLog = true
-            );
-        });
-
         ParseBin(doc, 10000);
-        //ParseRuntime(runtime, doc, 10000);
+        ParseRuntime(doc, 10000);
         ParseInterpret(doc, 10000);
     }
     static void DoExecBenchmark(XDocument doc)
     {
         BenchInterpExec(doc);
+        BenchRuntimeExec(doc);
     }
     static void DoBenchmark(XDocument doc)
     {
@@ -74,10 +68,17 @@ class Program
         }
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine($"Binary:  {parse.Elapsed.TotalNanoseconds / count} ns");
+        Console.WriteLine($"TurboBit Deserialize:  {parse.Elapsed.TotalNanoseconds / count} ns");
     }
-    static void ParseRuntime(Runtime runtime, XDocument original, int maxtime)
+    static void ParseRuntime(XDocument original, int maxtime)
     {
+        var runtime = DCR.Workflow.Runtime.Create(builder =>
+        {
+            builder.WithOptions(options =>
+                options.UpdateModelLog = true
+            );
+        });
+
         var parse = new Stopwatch();
         int count = 0;
         while (count <= maxtime)
@@ -89,7 +90,7 @@ class Program
         }
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine($"Runtime:  {parse.Elapsed.TotalNanoseconds / count} ns");
+        Console.WriteLine($"Runtime Deserialize:  {parse.Elapsed.TotalNanoseconds / count} ns");
     }
 
     static void ParseInterpret(XDocument original, int maxtime)
@@ -106,14 +107,14 @@ class Program
         }
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"Interpret:  {parse.Elapsed.TotalNanoseconds / count} ns");
+        Console.WriteLine($"Interpreter Deserialize:  {parse.Elapsed.TotalNanoseconds / count} ns");
     }
 
     static void BenchBinary(XDocument original)
     {
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("Binary Benchmark");
+        Console.WriteLine("DCR TurboBit Spawn Benchmark");
         Console.WriteLine("====================================");
         Console.WriteLine($"{"I",4}  {"Mean",13}  {"Error",13}  {"StdDev",13}  {"Allocated",13}");
 
@@ -131,12 +132,9 @@ class Program
 
             for (int j = 0; j < 10; j++) // 10 runs for stats
             {
-                var parse = new Stopwatch();
                 var execute = new Stopwatch();
 
-                parse.Start();
                 var graph = DCRFastInterpreter.Deserialize(bin);
-                parse.Stop();
 
                 graph.Relationships
                     .Where(x => x.Type == RelationshipType.Spawn)
@@ -228,7 +226,7 @@ class Program
     {
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine("DCR Interpreter Benchmark");
+        Console.WriteLine("DCR Interpreter Spawn Benchmark");
         Console.WriteLine("====================================");
         Console.WriteLine($"{"I",4}  {"Mean",13}  {"Error",13}  {"StdDev",13}  {"Allocated",13}");
 
@@ -243,13 +241,9 @@ class Program
 
             for (int j = 0; j < 10; j++) // 10 runs for stats
             {
-                var parse = new Stopwatch();
                 var execute = new Stopwatch();
 
-                parse.Start();
                 DCRGraph graph = DCRInterpreter.ParseDCRGraphFromXml(original);
-                parse.Stop();
-
                 graph.Relationships
                     .Where(x => x.Type == RelationshipType.Spawn)
                     .ToList()
@@ -280,7 +274,7 @@ class Program
     {
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.DarkGreen;
-        Console.WriteLine("DCR Interpreter Exec  Benchmark");
+        Console.WriteLine("DCR TurboBit Exec  Benchmark");
         Console.WriteLine("====================================");
         Console.WriteLine($"{"I",4}  {"Mean",13}  {"Error",13}  {"StdDev",13}  {"Allocated",13}");
 
@@ -324,6 +318,65 @@ class Program
                 execute.Stop();
                 long afterAlloc = GC.GetAllocatedBytesForCurrentThread();
                 
+                durations.Add(execute.Elapsed.TotalMilliseconds);
+                allocations.Add(afterAlloc - beforeAlloc);
+            }
+            PrintStats(ConsoleColor.DarkGreen, i, durations, allocations);
+        }
+    }
+
+    static void BenchRuntimeExec(XDocument original)
+    {
+        var runtime = DCR.Workflow.Runtime.Create(builder =>
+        {
+            builder.WithOptions(options =>
+                options.UpdateModelLog = true
+            );
+        });
+        Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.DarkYellow;
+        Console.WriteLine("DCR Runtime Exec  Benchmark");
+        Console.WriteLine("====================================");
+        Console.WriteLine($"{"I",4}  {"Mean",13}  {"Error",13}  {"StdDev",13}  {"Allocated",13}");
+
+        var durations = new List<double>();
+        var allocations = new List<long>();
+
+        foreach (var i in new int[] { 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 })
+        {
+            for (int j = 0; j < 10; j++)
+            {
+                var graphs = new List<Model>();
+                for (int k = 0; k <= i - 1; k += 10)
+                {
+                    var model = runtime.Parse(original);
+                    graphs.Add(model);
+                }
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                var execute = new Stopwatch();
+                long beforeAlloc = GC.GetAllocatedBytesForCurrentThread();
+
+                execute.Start();
+
+                //Execute I events
+                foreach (var graph in graphs)
+                {
+                    runtime.Execute(graph, graph["start_date"], DCR.Core.Data.value.NewDate(DateTimeOffset.MinValue));
+                    runtime.Execute(graph, graph["end_date"], DCR.Core.Data.value.NewDate(DateTimeOffset.Now));
+                    runtime.Execute(graph, graph["reason"], DCR.Core.Data.value.NewString("Tired"));
+                    runtime.Execute(graph, graph["vacation_request"]);
+                    runtime.Execute(graph, graph["approved"], DCR.Core.Data.value.NewBool(true));
+                    runtime.Execute(graph, graph["employee_name"], DCR.Core.Data.value.NewString("Jim Bean"));
+                    runtime.Execute(graph, graph["employee_email"], DCR.Core.Data.value.NewString("jim@bean.org"));
+                    runtime.Execute(graph, graph["start_date"], DCR.Core.Data.value.NewDate(DateTimeOffset.MinValue));
+                    runtime.Execute(graph, graph["end_date"], DCR.Core.Data.value.NewDate(DateTimeOffset.Now));
+                    runtime.Execute(graph, graph["reason"], DCR.Core.Data.value.NewString("Tired"));
+                }
+                execute.Stop();
+                long afterAlloc = GC.GetAllocatedBytesForCurrentThread();
+
                 durations.Add(execute.Elapsed.TotalMilliseconds);
                 allocations.Add(afterAlloc - beforeAlloc);
             }
